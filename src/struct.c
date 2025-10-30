@@ -1,55 +1,55 @@
-// where is the led connected
-// port: A
-// pin:  5
+// LED on PA5 (Nucleo/Discovery boards commonly wire LED to PA5)
+#include <stdint.h>
+
 #define PERIPH_BASE          (0x40000000UL)
 #define AHB1PERIPH_OFFSET    (0x00020000UL)
 #define AHB1PERIPH_BASE      (PERIPH_BASE + AHB1PERIPH_OFFSET)
-#define GPIOA_OFFSET         (0x0000UL)
 
+#define GPIOA_OFFSET         (0x0000UL)
 #define GPIOA_BASE           (AHB1PERIPH_BASE + GPIOA_OFFSET)
 
 #define RCC_OFFSET           (0x3800UL)
 #define RCC_BASE             (AHB1PERIPH_BASE + RCC_OFFSET)
 
-#define AHB1EN_R_OFFSET      (0x30UL)
-#define RCC_AHB1EN_R         (*(volatile unsigned int*)(RCC_BASE + AHB1EN_R_OFFSET))
+#define GPIOAEN              (1U << 0)   // RCC AHB1ENR bit for GPIOA clock
+#define PIN5                 (1U << 5)   // PA5 mask
 
-#define MODE_R_OFFSET        (0x00UL)
-#define GPIOA_MODE_R         (*(volatile unsigned int*)(GPIOA_BASE + MODE_R_OFFSET))
+typedef struct {
+    volatile uint32_t DUMMY[12]; // offsets 0x00..0x2C (placeholder)
+    volatile uint32_t AHB1ENR;   // offset 0x30: AHB1 peripheral clock enable
+} RCC_TypeDef;
 
+typedef struct {
+    volatile uint32_t MODER;     // 0x00: mode
+    volatile uint32_t DUMMY2[4]; // 0x04..0x14 placeholders for simplicity
+    volatile uint32_t ODR;       // 0x14: output data
+} GPIO_TypeDef;
 
-#define OD_R_OFFSET          (0x14UL)
-#define GPIOA_OD_R           (*(volatile unsigned int*)(GPIOA_BASE + OD_R_OFFSET))
+#define RCC    ((RCC_TypeDef*)RCC_BASE)
+#define GPIOA  ((GPIO_TypeDef*)GPIOA_BASE)
 
-#define GPIOAEN              (1U<<0) // 0B 0000 0000 0000 0000 0000 0001
+int main(void) {
+    // 1) Enable clock for GPIOA
+    RCC->AHB1ENR |= GPIOAEN;
 
-#define PIN5                 (1U<<5)
-#define LED_PIN              PIN5
+    // 2) Set PA5 as General Purpose Output: MODER5 = 01b (bits 11:10)
+    GPIOA->MODER &= ~(3U << (5 * 2));  // clear both bits (11:10)
+    GPIOA->MODER |=  (1U << (5 * 2));  // set bit10 = 1, bit11 = 0
+	            // volatile → forces real register read/write (no optimization).
 
+                 // |= mask → set bit(s).
 
-int main(void){
-	RCC_AHB1EN_R |= GPIOAEN;
-	GPIOA_MODE_R |= (1U<<10);
-	GPIOA_MODE_R &=~(1U<<11);
-	while(1){
-//		GPIOA_OD_R |= LED_PIN;
-        GPIOA_OD_R ^= LED_PIN;
-        for(int i = 0; i < 100000; i++){
-	}
+                 // &= ~mask → clear bit(s).
+
+                 // ^= mask → toggle bit(s).
+
+                 // 1U << n → produce a mask for bit n (unsigned 1 shifted left n).
+
+                 // 3U << (5*2) → selects a 2-bit field (like MODER’s [11:10] for pin 5).
+
+                 // 3) Blink
+    while (1) {
+        GPIOA->ODR ^= PIN5; // toggle PA5
+        for (volatile int i = 0; i < 100000; i++) { /* crude delay */ }
+    }
 }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
