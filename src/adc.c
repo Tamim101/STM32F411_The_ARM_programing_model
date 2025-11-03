@@ -8,6 +8,7 @@
 #define adc_cq1_len2   (1U<<0)
 #define cr2_swstart    (1U<<30)
 #define sr_eoc          (1U<<1)
+#define cr2_cont        (1U<<1)
 
 void pa1_adc_init(void){
     //configure the abc gpoa pin
@@ -27,6 +28,7 @@ void pa1_adc_init(void){
 }
 void start_converstion(void){
     ADC1->CR2 |= cr2_swstart;
+    ADC1->CR2 |= cr2_cont;
 }
 uint32_t adc_read(void){
     while(!(ADC1->SR & sr_eoc)){

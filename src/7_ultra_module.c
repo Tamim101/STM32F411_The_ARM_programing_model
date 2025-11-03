@@ -54,7 +54,7 @@ void uart2_rxtx_int(void){
 
 void uart2_read(void){
      while (!(USART2->SR & sr_RXNE)) { }
-    return (USART2->DR & 0xFF);
+     return (USART2->DR);
 }
 
 
