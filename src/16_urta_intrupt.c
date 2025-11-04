@@ -19,6 +19,8 @@ int __io_putchar(int ch){
 static uint16_t compute_uart_div(uint32_t periphCLK, uint32_t BaudRate);
 static void uart_set_baudrate(USART_TypeDef *usartx, uint32_t periphclk,uint32_t BaudRate);
 void uar2_tx_int(void);
+void uar2_rx_intrupt_int(void);
+
 
 int main(void)
 {
@@ -60,7 +62,7 @@ void uar2_rx_intrupt_int(void){
     uart_set_baudrate(USART2,apb1_clk,uart_baudrate);
     USART2->CR1 = (crl1_te | crl1_ue);
     NVIC_EnableIRQ(USART2_IRQn);
-    
+
 
 
     USART2->CR1 |= crl1_te;
