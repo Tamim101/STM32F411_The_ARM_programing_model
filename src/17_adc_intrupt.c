@@ -15,9 +15,16 @@
 uint32_t sensor_value;
 void uar2_rx_intrupt_int(void);
 
-static void_call_back_itrudpt(void){
-    sensor_value = ADC1->DR;
-    printf("serial data ..........\n\r");
+// static void call_back_itrudpt(void){
+//     sensor_value = ADC1->DR;
+//     printf("serial data ..........\n\r");
+// }
+
+void ADC_IRQHandler(void) {
+    if (ADC1->SR & (1U << 1)) {  // Check EOC flag
+        call_back_itrudpt();
+        ADC1->SR &= ~(1U << 1);   // Clear EOC flag
+    }
 }
 
 int main(void){
@@ -29,34 +36,13 @@ int main(void){
         for(int i = 0;i < 100000;i++){
             if(sensor_value == '1'){
                 GPIOA->ODR ^= LED_PIN;
-            }elif(sensor_value == '0'){
-                GPIOA->ODR ~= LED_PIN;
+            }else if(sensor_value == '0'){
+                GPIOA->ODR &= ~LED_PIN;
             }
             else{
                 GPIOA->ODR ^= LED_PIN;
             }
         }
     }
-
-}
-void uar2_rx_intrupt_int(void){
-    RCC->AHB1ENR |= GPIOAEN;
-    GPIOA->MODER &=~(1U<<4);
-    GPIOA->MODER |= (1U<<5);
-    // set pa2 alternate funcition type to uart_tx af07
-    GPIOA->AFR[0]  |= (1U<<0);
-    GPIOA->AFR[0]  |= (1U<<9);
-    GPIOA->AFR[0]  |= (1U<<10);
-    GPIOA->AFR[0]  &=~(1U<<11);
-    //enable clock access to uart2
-    RCC->AHB1ENR |= uart2en;
-    uart_set_baudrate(USART2,apb1_clk,uart_baudrate);
-    USART2->CR1 = (crl1_te | crl1_ue);
-    NVIC_EnableIRQ(USART2_IRQn);
-
-
-
-    USART2->CR1 |= crl1_te;
-    USART2->CR1 |= crl1_ue;
 
 }
