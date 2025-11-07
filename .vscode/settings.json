@@ -1,7 +1,13 @@
 {
-    "files.associations": {
-        "stm32f4xx.h": "c",
-        "stdint.h": "c",
-        "systick.h": "c"
-    }
+  // 🔧 File associations for F1, not F4
+  "files.associations": {
+    "stm32f1xx.h": "c",
+    "stm32f1xx_hal.h": "c",
+    "stdint.h": "c",
+    "systick.h": "c"
+  },
+
+
+  // "platformio-ide.uploadPort": "/dev/ttyS0",
+  // "platformio-ide.monitorPort": "/dev/ttyS0"
 }
