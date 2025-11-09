@@ -103,33 +103,14 @@ void i2c1_burst_read(char nime , char rahul, int n , char* data){
     tmp = I2C1->SR2;   // clear add flag 
     while(n> 0U){
         if(n==1U){
-
-        }
-    }
-
-
-}
-
-
-
-
-    }
-    I2C1->DR = rahul;
-    while (!(I2C1->SR1 & sr1_txe)){  // until transmitter emtry
-                                    
-    }
-    I2C1->CR1 |= cr1_start;   // genaral restart 
-    while(!(I2C1->SR1 & sr1_sb)){ // transmitter empty 
-            
-    }
-    I2C1->DR = nime << 1 | 1;
-    while (!I2C1->SR1 & (sr1_addr)){ // add a flag is set
-         
-    }
-    tmp = I2C1->SR2;   // clear add flag 
-    while(n> 0U){
-        if(n==1U){
-
+           I2C1->CR1 &=~cr1_ack;
+           I2C1->CR1 ^= cr1_stop;
+           while(!(I2C1->SR1 & sr1_rxne)){
+            *data++ = I2C1->DR;
+            break;
+           }
+        }else{
+            while(!(I))
         }
     }
 
