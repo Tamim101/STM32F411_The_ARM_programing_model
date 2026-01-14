@@ -1,18 +1,81 @@
-#define PERIPH_BASE                  (0x40000000UL)
-#define AHBPERIPH_OFFSET             (0X00020000UL)
-#define AHBPERIPH_BASE               (PERIPH_BASE + AHBPERIPH_BASE)
-#define GPIOA_OFFSET                 (0x0000UL)
+// #define PERIPH_BASE                  (0x40000000UL)
+// #define AHBPERIPH_OFFSET             (0X00020000UL)
+// #define AHBPERIPH_BASE               (PERIPH_BASE + AHBPERIPH_OFFSET)
+// #define GPIOA_OFFSET                 (0x0000UL)
 
-#define GPIOA_BASE                   (AHBPERIPH_BASE + AHBPERIPH_OFFSET)
+// #define GPIOA_BASE                   (AHBPERIPH_BASE + GPIOA_OFFSET)
 
-#define RCC_OFFSET                   (0x3800UL)
-#define RCC_BASE                     (AHBPERIPH_BASE + RCC_OFFSET)
+// #define RCC_OFFSET                   (0x3800UL)
+// #define RCC_BASE                     (AHBPERIPH_BASE + RCC_OFFSET)
 
-#define  AHB1EN_R_OFFSET             (0x30UL)
-#define  GPIOA_MODE_R                (*(volatile unsigned int *) (GPIOA_BASE + GPIOA_MODE_R))
+// #define  AHB1EN_R_OFFSET             (0x30UL)
+// #define  RCC_AHB1EN_R                (*(volatile unsigned int *) (RCC_BASE + AHB1EN_R_OFFSET))
+// #define  GPIOA_MODE_R_OFFSET         (0x00UL)
+// #define  GPIOA_MODE_R                (*(volatile unsigned int *) (GPIOA_BASE + GPIOA_MODE_R_OFFSET))
 
-#define OD_R_OFFSET                  (0x14UL)
-#define GPIOA_OD_R                   (*(volatile unsigned int *) (GPIOA_BASE + OD_R_OFFSET))
+// #define OD_R_OFFSET                  (0x14UL)
+// #define GPIOA_OD_R                   (*(volatile unsigned int *) (GPIOA_BASE + OD_R_OFFSET))
 
-#define GPIOAEN                      (1U<<0)
-#define LED_PIN                      PIN5
+// #define GPIOAEN                      (1U<<0)
+// #define LED_PIN                      PIN5
+
+// int main(void){
+//     RCC_AHB1EN_R |=  GPIOAEN;
+//     GPIOA_MODE_R |= (1U<<10);  // 0 TO 10 BIT
+//     GPIOA_MODE_R &=~(1U<<11);   // 11 TO 0 BIT 
+//     while(1){
+//         GPIOA_OD_R ^= LED_PIN;
+//         for(int i = 0; i<100000; i++){
+            
+//         }
+
+//     }
+    
+
+// }
+
+#include <stdint.h>
+#include "stm32f1xx.h"
+#define PERIPH_BASE        0x40000000UL
+
+// RCC and GPIO base addresses for STM32F103 (F1)
+#define APB2PERIPH_BASE    (PERIPH_BASE + 0x00010000UL)
+
+#define RCC_BASE           (PERIPH_BASE + 0x00021000UL)      // 0x40021000
+#define GPIOA_BASE         (APB2PERIPH_BASE + 0x00000800UL)  // 0x40010800
+
+// RCC registers
+#define RCC_APB2ENR_OFFSET 0x18UL
+#define RCC_APB2ENR        (*(volatile uint32_t *)(RCC_BASE + RCC_APB2ENR_OFFSET))
+
+// GPIO registers (F1)
+#define GPIO_CRL_OFFSET    0x00UL
+#define GPIO_ODR_OFFSET    0x0CUL
+#define GPIOA_CRL          (*(volatile uint32_t *)(GPIOA_BASE + GPIO_CRL_OFFSET))
+#define GPIOA_ODR          (*(volatile uint32_t *)(GPIOA_BASE + GPIO_ODR_OFFSET))
+
+// Bit definitions
+#define IOPAEN             (1U << 2)   // RCC_APB2ENR: I/O port A clock enable
+#define LED_PIN            (1U << 5)   // PA5
+
+static void delay(volatile uint32_t t) {
+    while (t--) { __asm__("nop"); }
+}
+#include "stm32f1xx.h"
+
+int main(void) {
+    RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
+
+    GPIOC->CRH &= ~(0xFUL << ((13U - 8U) * 4U));
+    GPIOC->CRH |=  (0x2UL << ((13U - 8U) * 4U));
+
+    // LED is usually active-low
+    GPIOC->BSRR = (1U << 13); // OFF
+
+    while (1) {
+        GPIOC->BRR  = (1U << 13); // ON
+        delay(300000);
+        GPIOC->BSRR = (1U << 13); // OFF
+        delay(300000);
+    }
+}
