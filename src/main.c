@@ -101,9 +101,9 @@ int main(void) {
 
     while (1) {
         GPIOC->BRR  = (1U << 13);                // ON
-        delay(100000);
+        delay(200000);
         GPIOC->BSRR = (1U << 13);                // OFF
-        delay(100000);
+        delay(200000);
     }
 }
 
