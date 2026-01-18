@@ -73,37 +73,66 @@
 //     volatile uint32_t APB1ENR;
 // }RCC_TypeDef;
 // typedef struct {
-    volatile uint32_t CRL;
-    volatile uint32_t CRH;
-    volatile uint32_t IDR;
-    volatile uint32_t ODR;
-    volatile uint32_t BSRR;
-    volatile uint32_t BRR;
-    volatile uint32_t LCKR;
-}GPIO_TypeDef;
+//     volatile uint32_t CRL;
+//     volatile uint32_t CRH;
+//     volatile uint32_t IDR;
+//     volatile uint32_t ODR;
+//     volatile uint32_t BSRR;
+//     volatile uint32_t BRR;
+//     volatile uint32_t LCKR;
+// }GPIO_TypeDef;
 
-#define RCC      ((RCC_TypeDef*)RCC_BASE)
-#define GPIOA    ((GPIO_TypeDef*)GPIOA_BASE)
+// #define RCC      ((RCC_TypeDef*)RCC_BASE)
+// #define GPIOA    ((GPIO_TypeDef*)GPIOA_BASE)
+
+// #include "stm32f1xx.h"
+
+// static void delay(volatile uint32_t t) {
+//     while (t--) { __asm__("nop"); }
+// }
+
+// int main(void) {
+//     RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;          // Enable GPIOC clock
+
+//     GPIOC->CRH &= ~(0xFUL << ((13U - 8U) * 4U)); // PC13 output push-pull 2MHz
+//     GPIOC->CRH |=  (0x2UL << ((13U - 8U) * 4U));
+
+//     GPIOC->BSRR = (1U << 13);                    // LED OFF (active-low)
+
+//     while (1) {
+//         GPIOC->BRR  = (1U << 13);                // ON
+//         delay(200000);
+//         GPIOC->BSRR = (1U << 13);                // OFF
+//         delay(200000);
+//     }
+// }
+
 
 #include "stm32f1xx.h"
+
+#define LED_PIN   (1U << 5)   // PA5
+
+
 
 static void delay(volatile uint32_t t) {
     while (t--) { __asm__("nop"); }
 }
 
 int main(void) {
-    RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;          // Enable GPIOC clock
+    // 1) Enable GPIOA clock (F103: GPIO on APB2)
+    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
 
-    GPIOC->CRH &= ~(0xFUL << ((13U - 8U) * 4U)); // PC13 output push-pull 2MHz
-    GPIOC->CRH |=  (0x2UL << ((13U - 8U) * 4U));
-
-    GPIOC->BSRR = (1U << 13);                    // LED OFF (active-low)
+    // 2) Configure PA5 as output push-pull, 2 MHz (F103: use CRL for pins 0..7)
+    GPIOA->CRL &= ~(0xFUL << (5U * 4U));     // clear PA5 nibble
+    GPIOA->CRL |=  (0x2UL << (5U * 4U));     // 0b0010: output PP 2MHz
 
     while (1) {
-        GPIOC->BRR  = (1U << 13);                // ON
-        delay(200000);
-        GPIOC->BSRR = (1U << 13);                // OFF
-        delay(200000);
+        // Set PA5 HIGH
+        GPIOA->BSRR = LED_PIN;
+        delay(100000);
+
+        // Reset PA5 LOW (BSRR upper half resets)
+        GPIOA->BSRR = (LED_PIN << 16);
+        delay(100000);
     }
 }
-
