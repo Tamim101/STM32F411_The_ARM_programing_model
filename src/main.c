@@ -111,28 +111,37 @@
 #include "stm32f1xx.h"
 
 #define LED_PIN   (1U << 5)   // PA5
-
-
+#define BTN_PIN   (1U << 0)   // PA0
 
 static void delay(volatile uint32_t t) {
     while (t--) { __asm__("nop"); }
 }
 
 int main(void) {
-    // 1) Enable GPIOA clock (F103: GPIO on APB2)
+    // Enable clocks for GPIOA
     RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
 
-    // 2) Configure PA5 as output push-pull, 2 MHz (F103: use CRL for pins 0..7)
-    GPIOA->CRL &= ~(0xFUL << (5U * 4U));     // clear PA5 nibble
-    GPIOA->CRL |=  (0x2UL << (5U * 4U));     // 0b0010: output PP 2MHz
+    // ---- PA5 as output push-pull 2 MHz ----
+    GPIOA->CRL &= ~(0xFUL << (5U * 4U));
+    GPIOA->CRL |=  (0x2UL << (5U * 4U));   // 0b0010 output PP 2MHz
+
+    // ---- PA0 as input with pull-up ----
+    // CNF=10, MODE=00 => 0b1000 = 0x8 for that pin nibble
+    GPIOA->CRL &= ~(0xFUL << (0U * 4U));
+    GPIOA->CRL |=  (0x8UL << (0U * 4U));   // input pull-up/pull-down
+    GPIOA->ODR |= BTN_PIN;                 // pull-up selected (ODR bit = 1)
 
     while (1) {
-        // Set PA5 HIGH
-        GPIOA->BSRR = LED_PIN;
-        delay(100000);
+        // With pull-up: not pressed = 1, pressed = 0
+        if ((GPIOA->IDR & BTN_PIN) == 0) {
+            // pressed -> turn LED ON
+            GPIOA->BSRR = LED_PIN;         // PA5 HIGH
+        } else {
+            // not pressed -> turn LED OFF
+            GPIOA->BSRR = (LED_PIN << 16); // PA5 LOW
+        }
 
-        // Reset PA5 LOW (BSRR upper half resets)
-        GPIOA->BSRR = (LED_PIN << 16);
-        delay(100000);
+        delay(30000); // small debounce
     }
 }
+
