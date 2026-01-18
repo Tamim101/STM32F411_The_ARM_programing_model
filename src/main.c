@@ -133,7 +133,7 @@ int main(void) {
 
     while (1) {
         // With pull-up: not pressed = 1, pressed = 0
-        if ((GPIOA->IDR & BTN_PIN) == 0) {
+        if ((GPIOA->IDR & BTN_PIN) == 1) {
             // pressed -> turn LED ON
             GPIOA->BSRR = LED_PIN;         // PA5 HIGH
         } else {
