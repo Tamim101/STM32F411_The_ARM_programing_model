@@ -144,4 +144,57 @@
 //         delay(30000); // small debounce
 //     }
 // }
+static void uart_set_baudrate(USART_TypeDef *USARTx, uint32_t periphclk , uint32_t baudrate);
+static uint16_t compute_uart_div(uint32_t periphclik, uint32_t baundrate);
 
+#define GPIOAEN     (1U<<0);
+#define UART2EN     (1U<<17);
+#define SYS_FREQ    16000000
+#define APB1_CLK    SYS_FREQ
+#define UART_BAUDRATE    115200
+#define CR1_TE      (1U<<3)
+#define CR1_UE      (1U<<13)
+void uart_tc_init(void);
+
+int main(){
+
+    while(1){
+
+    }
+}
+
+void uart_tc_init(void){
+    RCC->AHBENR |= GPIOAEN;
+    GPIOA->MODER &=~ (1U<<4);
+    GPIOA->MODER |= (1u<<5);
+
+    // PIN SET A2 ALTERNATE FUNCTION 
+    GPIOA->AFR[0] |= (1U<<8);
+    GPIOA->AFR[0] |= (1U<<9);
+    GPIOA->AFR[0] |= (1U<<10);
+    GPIOA->AFR[0] &=~ (1U<<11);
+
+    RCC->APB1ENR |= UART2EN;
+
+    uart_set_baudrate(USART2,APB1,CLK,UART_BAUDRATE);
+    USART2->CR1 = CR1_TE;
+    USART2-> CR1 |= CR1_UE;
+}
+
+void uart2_write(int ch){
+    USART2->SR & 
+    USART2->DR = (ch& 0xFF);
+}
+
+
+
+
+static void uart_set_baudrate(USART_TypeDef *USARTx, uint32_t periphclk , uint32_t baudrate){
+    USARTx->BRR = compute_uart_div(periphclk,baudrate);
+}
+
+
+
+static uint16_t compute_uart_div(uint32_t periphclik, uint32_t baundrate){
+    return (periphclik + (baundrate / 2U) / baundrate);
+}
