@@ -110,38 +110,38 @@
 
 #include "stm32f1xx.h"
 
-#define LED_PIN   (1U << 5)   // PA5
-#define BTN_PIN   (1U << 0)   // PA0
+// #define LED_PIN   (1U << 5)   // PA5
+// #define BTN_PIN   (1U << 0)   // PA0
 
-static void delay(volatile uint32_t t) {
-    while (t--) { __asm__("nop"); }
-}
+// static void delay(volatile uint32_t t) {
+//     while (t--) { __asm__("nop"); }
+// }
 
-int main(void) {
-    // Enable clocks for GPIOA
-    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
+// int main(void) {
+//     // Enable clocks for GPIOA
+//     RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
 
-    // ---- PA5 as output push-pull 2 MHz ----
-    GPIOA->CRL &= ~(0xFUL << (5U * 4U));
-    GPIOA->CRL |=  (0x2UL << (5U * 4U));   // 0b0010 output PP 2MHz
+//     // ---- PA5 as output push-pull 2 MHz ----
+//     GPIOA->CRL &= ~(0xFUL << (5U * 4U));
+//     GPIOA->CRL |=  (0x2UL << (5U * 4U));   // 0b0010 output PP 2MHz
 
-    // ---- PA0 as input with pull-up ----
-    // CNF=10, MODE=00 => 0b1000 = 0x8 for that pin nibble
-    GPIOA->CRL &= ~(0xFUL << (0U * 4U));
-    GPIOA->CRL |=  (0x8UL << (0U * 4U));   // input pull-up/pull-down
-    GPIOA->ODR |= BTN_PIN;                 // pull-up selected (ODR bit = 1)
+//     // ---- PA0 as input with pull-up ----
+//     // CNF=10, MODE=00 => 0b1000 = 0x8 for that pin nibble
+//     GPIOA->CRL &= ~(0xFUL << (0U * 4U));
+//     GPIOA->CRL |=  (0x8UL << (0U * 4U));   // input pull-up/pull-down
+//     GPIOA->ODR |= BTN_PIN;                 // pull-up selected (ODR bit = 1)
 
-    while (1) {
-        // With pull-up: not pressed = 1, pressed = 0
-        if ((GPIOA->IDR & BTN_PIN) == 0) {
-            // pressed -> turn LED ON
-            GPIOA->BSRR = LED_PIN;         // PA5 HIGH
-        } else {
-            // not pressed -> turn LED OFF
-            GPIOA->BSRR = (LED_PIN << 16); // PA5 LOW
-        }
+//     while (1) {
+//         // With pull-up: not pressed = 1, pressed = 0
+//         if ((GPIOA->IDR & BTN_PIN) == 0) {
+//             // pressed -> turn LED ON
+//             GPIOA->BSRR = LED_PIN;         // PA5 HIGH
+//         } else {
+//             // not pressed -> turn LED OFF
+//             GPIOA->BSRR = (LED_PIN << 16); // PA5 LOW
+//         }
 
-        delay(30000); // small debounce
-    }
-}
+//         delay(30000); // small debounce
+//     }
+// }
 
