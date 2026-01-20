@@ -144,57 +144,85 @@
 //         delay(30000); // small debounce
 //     }
 // }
-static void uart_set_baudrate(USART_TypeDef *USARTx, uint32_t periphclk , uint32_t baudrate);
-static uint16_t compute_uart_div(uint32_t periphclik, uint32_t baundrate);
+#include "stm32f1xx.h"
 
-#define GPIOAEN     (1U<<0);
-#define UART2EN     (1U<<17);
-#define SYS_FREQ    16000000
-#define APB1_CLK    SYS_FREQ
-#define UART_BAUDRATE    115200
-#define CR1_TE      (1U<<3)
-#define CR1_UE      (1U<<13)
-void uart_tc_init(void);
+#define SYSCLK_HZ   72000000UL
+#define BAUDRATE    115200UL
 
-int main(){
+static void uart2_set_baud(uint32_t pclk1_hz, uint32_t baud)
+{
+    // USARTDIV = pclk / baud (oversampling by 16)
+    // BRR format on F1: Mantissa in [15:4], Fraction in [3:0] (fraction out of 16)
+    uint32_t usartdiv_x16 = (pclk1_hz + (baud / 2U)) / baud; // rounded (x16 already implicit below? see next lines)
 
-    while(1){
+    // Better: compute with fraction explicitly:
+    // usartdiv = pclk / (16*baud)
+    // mantissa = floor(usartdiv)
+    // fraction = round((usartdiv - mantissa)*16)
+    uint32_t div = (pclk1_hz + (baud/2U)) / baud; // pclk/baud (rounded)
+    // Convert to BRR assuming oversampling by 16:
+    // BRR = (pclk/baud) in this simplified integer form works for many common clocks,
+    // but we will compute proper mantissa/fraction:
+    uint32_t mant = pclk1_hz / (16U * baud);
+    uint32_t frac = ((pclk1_hz % (16U * baud)) * 16U + (baud/2U)) / baud;
 
+    if (frac > 15U) { mant += 1U; frac = 0U; }
+
+    USART2->BRR = (mant << 4) | (frac & 0xFU);
+
+    (void)usartdiv_x16;
+    (void)div;
+}
+
+static void uart2_init(void)
+{
+    // 1) Enable clocks: GPIOA + AFIO on APB2, USART2 on APB1
+    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN | RCC_APB2ENR_AFIOEN;
+    RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
+
+    // 2) Configure PA2 as Alternate Function Push-Pull, 2 MHz
+    // F1 GPIO config per pin nibble: [CNF1 CNF0 MODE1 MODE0]
+    // AF Push-Pull => CNF=10, Output 2MHz => MODE=10 => 0b1010 = 0xA
+    GPIOA->CRL &= ~(0xFUL << (2U * 4U));      // clear PA2 config
+    GPIOA->CRL |=  (0xAUL << (2U * 4U));      // set PA2 AF PP 2MHz
+
+    // (Optional) PA3 as input floating for RX (not used here)
+    // GPIOA->CRL &= ~(0xFUL << (3U * 4U));
+    // GPIOA->CRL |=  (0x4UL << (3U * 4U));   // CNF=01 MODE=00 => floating input
+
+    // 3) Set baud rate
+    // On Blue Pill default: SYSCLK=72MHz, APB1 prescaler=2 => PCLK1=36MHz
+    uint32_t pclk1 = 36000000UL;
+    uart2_set_baud(pclk1, BAUDRATE);
+
+    // 4) Enable USART, enable transmitter
+    USART2->CR1 = 0;
+    USART2->CR1 |= USART_CR1_TE;   // transmitter enable
+    USART2->CR1 |= USART_CR1_UE;   // USART enable
+}
+
+static void uart2_write_char(char c)
+{
+    while (!(USART2->SR & USART_SR_TXE)) { } // wait TX empty
+    USART2->DR = (uint16_t)c;
+}
+
+static void uart2_write_string(const char *s)
+{
+    while (*s) uart2_write_char(*s++);
+}
+
+static void delay(volatile uint32_t t)
+{
+    while (t--) { __asm__("nop"); }
+}
+
+int main(void)
+{
+    uart2_init();
+
+    while (1) {
+        uart2_write_string("Hello from STM32F103 USART2 (PA2)\r\n");
+        delay(2000000);
     }
-}
-
-void uart_tc_init(void){
-    RCC->AHBENR |= GPIOAEN;
-    GPIOA->MODER &=~ (1U<<4);
-    GPIOA->MODER |= (1u<<5);
-
-    // PIN SET A2 ALTERNATE FUNCTION 
-    GPIOA->AFR[0] |= (1U<<8);
-    GPIOA->AFR[0] |= (1U<<9);
-    GPIOA->AFR[0] |= (1U<<10);
-    GPIOA->AFR[0] &=~ (1U<<11);
-
-    RCC->APB1ENR |= UART2EN;
-
-    uart_set_baudrate(USART2,APB1,CLK,UART_BAUDRATE);
-    USART2->CR1 = CR1_TE;
-    USART2-> CR1 |= CR1_UE;
-}
-
-void uart2_write(int ch){
-    USART2->SR & 
-    USART2->DR = (ch& 0xFF);
-}
-
-
-
-
-static void uart_set_baudrate(USART_TypeDef *USARTx, uint32_t periphclk , uint32_t baudrate){
-    USARTx->BRR = compute_uart_div(periphclk,baudrate);
-}
-
-
-
-static uint16_t compute_uart_div(uint32_t periphclik, uint32_t baundrate){
-    return (periphclik + (baundrate / 2U) / baundrate);
 }
