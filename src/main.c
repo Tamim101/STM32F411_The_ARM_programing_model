@@ -99,13 +99,13 @@
 
 //     GPIOC->BSRR = (1U << 13);                    // LED OFF (active-low)
 
-//     while (1) {
-//         GPIOC->BRR  = (1U << 13);                // ON
-//         delay(200000);
-//         GPIOC->BSRR = (1U << 13);                // OFF
-//         delay(200000);
-//     }
-// }
+    while (1) {
+        GPIOC->BRR  = (1U << 13);                // ON
+        delay(200000);
+        GPIOC->BSRR = (1U << 13);                // OFF
+        delay(200000);
+    }
+}
 
 
 #include "stm32f1xx.h"
