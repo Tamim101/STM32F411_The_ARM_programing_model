@@ -1,0 +1,2 @@
+/home/tamim-khan/Documents/PlatformIO/Projects/STM32F411_The_ARM_programing_model/build/CMakeFiles/edit_cache.dir
+/home/tamim-khan/Documents/PlatformIO/Projects/STM32F411_The_ARM_programing_model/build/CMakeFiles/rebuild_cache.dir
