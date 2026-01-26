@@ -108,17 +108,99 @@
 // }
 
 
-#include "stm32f1xx.h"
+// #include "stm32f1xx.h"
 
-#include <stdio.h>
-#include<stdint.h>
-#include "uart.h"
-int main(void)
-{
-    uart2_init();
+// #include <stdio.h>
+// #include<stdint.h>
+// #include "uart.h"
+// int main(void)
+// {
+//     uart2_init();
+
+//     while (1) {
+//         uart2_write_string("Hello from STM32F103 USART2 (PA2)\r\n");
+
+//     }
+// }
+#include "stm32f1xx.h" // or "stm32f103xb.h" depending on your CMSIS setup
+
+// Blue Pill LED on PC13 is usually active-low
+#define LED_ON()   (GPIOC->BRR  = (1U << 13))  // drive low
+#define LED_OFF()  (GPIOC->BSRR = (1U << 13))  // drive high
+
+static void gpio_led_init(void) {
+    RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;      // enable GPIOC clock
+
+    // PC13 output push-pull, 2 MHz
+    // CRH controls pins 8..15; PC13 is bits [23:20]
+    GPIOC->CRH &= ~(0xFU << 20);
+    GPIOC->CRH |=  (0x2U << 20);            // MODE13=10 (2MHz), CNF13=00 (PP)
+
+    LED_OFF();
+}
+
+static void uart1_init_115200(void) {
+    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;      // enable GPIOA clock
+    RCC->APB2ENR |= RCC_APB2ENR_USART1EN;    // enable USART1 clock
+
+    // PA9 (TX) = AF push-pull, 50 MHz
+    GPIOA->CRH &= ~(0xFU << 4);              // PA9 is bits [7:4]
+    GPIOA->CRH |=  (0xBU << 4);              // MODE9=11 (50MHz), CNF9=10 (AF PP)
+
+    // PA10 (RX) = input floating
+    GPIOA->CRH &= ~(0xFU << 8);              // PA10 is bits [11:8]
+    GPIOA->CRH |=  (0x4U << 8);              // MODE10=00, CNF10=01 (floating)
+
+    // Baud rate:
+    // For 72MHz PCLK2 and 115200 baud -> BRR = 0x0271
+    // If your PCLK2 isn't 72MHz, this value must change.
+    USART1->BRR = 0x0271;
+
+    USART1->CR1 = 0;
+    USART1->CR1 |= USART_CR1_RE;            // receiver enable
+    USART1->CR1 |= USART_CR1_TE;            // transmitter enable (optional)
+    USART1->CR1 |= USART_CR1_UE;            // USART enable
+}
+
+static char uart1_read_char_blocking(void) {
+    while (!(USART1->SR & USART_SR_RXNE)) {
+        // wait until a byte arrives
+    }
+    return (char)USART1->DR;                // reading DR clears RXNE
+}
+
+int main(void) {
+    gpio_led_init();
+    uart1_init_115200();
 
     while (1) {
-        uart2_write_string("Hello from STM32F103 USART2 (PA2)\r\n");
+        char c = uart1_read_char_blocking();
 
+        // Many terminals send '\r' or '\n' after keys; ignore them
+        if (c == '\r' || c == '\n') continue;
+
+        if (c == 'o' || c == 'O') {
+            LED_ON();
+        } else if (c == 'k' || c == 'K') {
+            LED_OFF();
+        }
     }
 }
+int main(void) {
+    gpio_led_init();
+    uart1_init_115200();
+
+    while (1) {
+        char c = uart1_read_char_blocking();
+
+        // Many terminals send '\r' or '\n' after keys; ignore them
+        if (c == '\r' || c == '\n') continue;
+
+        if (c == 'o' || c == 'O') {
+            LED_ON();
+        } else if (c == 'k' || c == 'K') {
+            LED_OFF();
+        }
+    }
+}
+
