@@ -204,27 +204,66 @@
 //     }
 // }
 
-ADC_HandleTypeDef hadc1;
+// #include "main.h"
+
+// ADC_HandleTypeDef hadc1;
+
+// void SystemClock_Config(void);
+// static void MX_GPIO_Init(void);
+// static void MX_ADC1_Init(void);
+
+// int main(void)
+// {
+//   HAL_Init();
+//   SystemClock_Config();
+//   MX_GPIO_Init();
+//   MX_ADC1_Init();
+
+//   while (1)
+//   {
+//     HAL_ADC_Start(&hadc1);
+//     HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+
+//     uint16_t adc_value = HAL_ADC_GetValue(&hadc1);
+
+//     HAL_ADC_Stop(&hadc1);
+
+//     // Put breakpoint here and watch adc_value
+//     HAL_Delay(200);
+//   }
+// }
+
+// #include "math.h"
+
+// ADC_HandleTypeDef hadc1;
+
+// void SystemClock_config(void);
+// static void MX_GPIO_INit(void);
+// static void MX_ADC1_INit(void);
+
+// int main(void){
+//     HAL_Init();
+//     SystemClock_Config();
+//     MX_GPIO_INit();
+//     MX_ADC1_INit();
+//     while (1)
+//     {
+//         HAL_ADC_Start(&hadc1);
+//         HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+//         uint16_t adc_value = HAL_ADC_GetValue(&hadc1);
+//         HAL_ADC_Stop(&hadc1);
+//         HAL_Delay(200);
+//     }
+    
+// }
+
+#define GPIOAEN     (1U<<0)
+#define ADC1EN      (1U<<8)
+void pa1_adc_init(void){
+    RCC->AHBENR |= GPIOAEN;  // ENABLE CLOCK ACCESS TO GPIOA
+    GPIOA->BRR |= (1U<<2);
+    GPIOA-> BRR |= (1U<<3);  // SET THE MODE OF PA1 TO ANALOG 
+    RCC->APB2ENR |= ADC1EN ;   // ENABLE CLOCK ACCESS TO ADC
 
 
-#define P_GPIO    (1U<< 10)
-#define lED_PIN   (1U<< 14)
-#define  PIN      (lED_PIN)
-
-
-
-
-int main(void) {
-    RCC-> AHBENR =| lED_PIN;
-    HAL_ADC_Start(&hadc1);
-    HAL_ADC_PollForConversion(&hadc1, 10);
-    uint16_t val = HAL_ADC_GetValue(&hadc1);
-
-    while (1) {
-        // Your code here
-    }
-
-    return 0;
 }
-
-
