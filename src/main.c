@@ -85,30 +85,30 @@
 // #define RCC      ((RCC_TypeDef*)RCC_BASE)
 // #define GPIOA    ((GPIO_TypeDef*)GPIOA_BASE)
 
-// #include "stm32f1xx.h"
-
-// static void delay(volatile uint32_t t) {
-//     while (t--) { __asm__("nop"); }
-// }
-
-// int main(void) {
-//     RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;          // Enable GPIOC clock
-
-//     GPIOC->CRH &= ~(0xFUL << ((13U - 8U) * 4U)); // PC13 output push-pull 2MHz
-//     GPIOC->CRH |=  (0x2UL << ((13U - 8U) * 4U));
-
-//     GPIOC->BSRR = (1U << 13);                    // LED OFF (active-low)
-
-//     while (1) {
-//         GPIOC->BRR  = (1U << 13);                // ON
-//         delay(200000);
-//         GPIOC->BSRR = (1U << 13);                // OFF
-//         delay(200000);
-//     }
-// }
-
-
 #include "stm32f1xx.h"
+
+static void delay(volatile uint32_t t) {
+    while (t--) { __asm__("nop"); }
+}
+
+int main(void) {
+    RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;          // Enable GPIOC clock
+
+    GPIOC->CRH &= ~(0xFUL << ((13U - 8U) * 4U)); // PC13 output push-pull 2MHz
+    GPIOC->CRH |=  (0x2UL << ((13U - 8U) * 4U));
+
+    GPIOC->BSRR = (1U << 13);                    // LED OFF (active-low)
+
+    while (1) {
+        GPIOC->BRR  = (1U << 13);                // ON
+        delay(200000);
+        GPIOC->BSRR = (1U << 13);                // OFF
+        delay(200000);
+    }
+}
+
+
+// #include "stm32f1xx.h"
 
 // #include <stdio.h>
 // #include<stdint.h>
@@ -241,29 +241,34 @@
 // static void MX_GPIO_INit(void);
 // static void MX_ADC1_INit(void);
 
-// int main(void){
-//     HAL_Init();
-//     SystemClock_Config();
-//     MX_GPIO_INit();
-//     MX_ADC1_INit();
-//     while (1)
-//     {
-//         HAL_ADC_Start(&hadc1);
-//         HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-//         uint16_t adc_value = HAL_ADC_GetValue(&hadc1);
-//         HAL_ADC_Stop(&hadc1);
-//         HAL_Delay(200);
-//     }
+int main(void){
+    HAL_Init();
+    SystemClock_Config();
+    MX_GPIO_INit();
+    MX_ADC1_INit();
+    while (1)
+    {
+        HAL_ADC_Start(&hadc1);
+        HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+        uint16_t adc_value = HAL_ADC_GetValue(&hadc1);
+        HAL_ADC_Stop(&hadc1);
+        HAL_Delay(200);
+    }
     
-// }
-
-#define GPIOAEN     (1U<<0)
-#define ADC1EN      (1U<<8)
-void pa1_adc_init(void){
-    RCC->AHBENR |= GPIOAEN;  // ENABLE CLOCK ACCESS TO GPIOA
-    GPIOA->BRR |= (1U<<2);
-    GPIOA-> BRR |= (1U<<3);  // SET THE MODE OF PA1 TO ANALOG 
-    RCC->APB2ENR |= ADC1EN ;   // ENABLE CLOCK ACCESS TO ADC
-
-
 }
+
+// #define GPIOAEN     (1U<<0)
+// #define ADC1EN      (1U<<8)
+// void pa1_adc_init(void){
+//     RCC->AHBENR |= GPIOAEN;  // ENABLE CLOCK ACCESS TO GPIOA
+//     GPIOA->BRR |= (1U<<2);
+//     GPIOA-> BRR |= (1U<<3);  // SET THE MODE OF PA1 TO ANALOG 
+//     RCC->APB2ENR |= ADC1EN ;   // ENABLE CLOCK ACCESS TO ADC
+//     while (1){
+//         for (int i = 0 ; i < 100000;i++){
+            
+//         }
+//     }
+
+
+// }
