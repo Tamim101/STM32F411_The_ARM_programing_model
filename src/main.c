@@ -85,27 +85,27 @@
 // #define RCC      ((RCC_TypeDef*)RCC_BASE)
 // #define GPIOA    ((GPIO_TypeDef*)GPIOA_BASE)
 
-#include "stm32f1xx.h"
+// #include "stm32f1xx.h"
 
-static void delay(volatile uint32_t t) {
-    while (t--) { __asm__("nop"); }
-}
+// static void delay(volatile uint32_t t) {
+//     while (t--) { __asm__("nop"); }
+// }
 
-int main(void) {
-    RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;          // Enable GPIOC clock
+// int main(void) {
+//     RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;          // Enable GPIOC clock
 
-    GPIOC->CRH &= ~(0xFUL << ((13U - 8U) * 4U)); // PC13 output push-pull 2MHz
-    GPIOC->CRH |=  (0x2UL << ((13U - 8U) * 4U));
+//     GPIOC->CRH &= ~(0xFUL << ((13U - 8U) * 4U)); // PC13 output push-pull 2MHz
+//     GPIOC->CRH |=  (0x2UL << ((13U - 8U) * 4U));
 
-    GPIOC->BSRR = (1U << 13);                    // LED OFF (active-low)
+//     GPIOC->BSRR = (1U << 13);                    // LED OFF (active-low)
 
-    while (1) {
-        GPIOC->BRR  = (1U << 13);                // ON
-        delay(200000);
-        GPIOC->BSRR = (1U << 13);                // OFF
-        delay(200000);
-    }
-}
+//     while (1) {
+//         GPIOC->BRR  = (1U << 13);                // ON
+//         delay(200000);
+//         GPIOC->BSRR = (1U << 13);                // OFF
+//         delay(200000);
+//     }
+// }
 
 
 // #include "stm32f1xx.h"
@@ -241,21 +241,21 @@ int main(void) {
 // static void MX_GPIO_INit(void);
 // static void MX_ADC1_INit(void);
 
-int main(void){
-    HAL_Init();
-    SystemClock_Config();
-    MX_GPIO_INit();
-    MX_ADC1_INit();
-    while (1)
-    {
-        HAL_ADC_Start(&hadc1);
-        HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-        uint16_t adc_value = HAL_ADC_GetValue(&hadc1);
-        HAL_ADC_Stop(&hadc1);
-        HAL_Delay(200);
-    }
+// int main(void){
+//     HAL_Init();
+//     SystemClock_Config();
+//     MX_GPIO_INit();
+//     MX_ADC1_INit();
+//     while (1)
+//     {
+//         HAL_ADC_Start(&hadc1);
+//         HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+//         uint16_t adc_value = HAL_ADC_GetValue(&hadc1);
+//         HAL_ADC_Stop(&hadc1);
+//         HAL_Delay(200);
+//     }
     
-}
+// }
 
 // #define GPIOAEN     (1U<<0)
 // #define ADC1EN      (1U<<8)
@@ -272,3 +272,44 @@ int main(void){
 
 
 // }
+
+// #include <stdio.h>
+// #include <stdint.h>
+// #include "stm32f1xx.h"
+// #include "uart.h"
+// #include "adc.h"
+// uint32_t sensor_value;
+// int main(void){
+//     uart2_tx_init();
+//     pal_adc_int();
+//     start_converstion();
+//     while(1){
+//         sensor_value = adc_read();
+//         printf("Sensor value : %d \n\r",sensor_value);
+//     }
+// }
+
+
+
+
+
+
+#include <stdio.h>
+#include <stdint.h>
+#include "stm32f1xx.h"
+#include "uart.h"
+#include "adc.h"
+
+uint32_t sensor_value;
+
+int main(void)
+{
+    // uart2_tx_init();
+    pa1_adc_init();
+    
+    while (1)
+    {
+        sensor_value = adc_read();
+        printf("Sensor value : %lu \r\n", (unsigned long)sensor_value);
+    }
+}
