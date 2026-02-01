@@ -314,16 +314,3 @@ int main(void)
     }
 }
 
-uint32_t sensor_value;
-
-int main(void)
-{
-    // uart2_tx_init();
-    pa1_adc_init();
-    
-    while (1)
-    {
-        sensor_value = adc_read();
-        printf("Sensor value : %lu \r\n", (unsigned long)sensor_value);
-    }
-}
