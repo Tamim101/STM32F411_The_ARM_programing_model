@@ -6,5 +6,11 @@
 #define CTRL_COUNTFLAG        (1U<<16)
 
 void systickDelayMs(int n){
-    SysTick->LOAD = SYSTICK_LOAD_VAL;
+    SysTick->LOAD = SYSTICK_LOAD_VAL; // clock per millisecond
+
+    //clear systick current value register 
+    SysTick->VAL = 0;
+    
+    //systick and select internal clk_src
+    SysTick->VAL = 1
 }
