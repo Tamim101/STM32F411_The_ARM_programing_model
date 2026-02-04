@@ -293,24 +293,27 @@
 
 
 
-
-#include <stdio.h>
 #include <stdint.h>
 #include "stm32f1xx.h"
-#include "uart.h"
-#include "adc.h"
 
-uint32_t sensor_value;
+#define LED_PIN   (1U << 5)   // PA5
+
+static void delay(volatile uint32_t t) {
+    while (t--) { __asm__("nop"); }
+}
 
 int main(void)
 {
-    // uart2_tx_init();
-    pa1_adc_init();
-    
-    while (1)
-    {
-        sensor_value = adc_read();
-        printf("Sensor value : %lu \r\n", (unsigned long)sensor_value);
+    // Enable GPIOA clock (F103: APB2)
+    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
+
+    // PA5 output push-pull 2MHz (CRL, pin 5)
+    GPIOA->CRL &= ~(0xFUL << (5U * 4U));
+    GPIOA->CRL |=  (0x2UL << (5U * 4U));
+
+    while (1) {
+        GPIOA->ODR ^= LED_PIN;
+        delay(300000);
     }
 }
 
