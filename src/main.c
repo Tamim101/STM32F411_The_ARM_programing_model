@@ -315,5 +315,9 @@ int main(void)
         GPIOA->ODR ^= LED_PIN;
         delay(300000);
     }
+      while (1) {
+        GPIOA->ODR ^= LED_PIN;
+        delay(300000);
+    }
 }
 
