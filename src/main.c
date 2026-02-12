@@ -316,11 +316,6 @@ int main(void)
         printf("\a");
         delay(500000);
     }
-     while (1) {
-        GPIOA->ODR ^= LED_PIN;
-        printf("\a");
-        delay(500000);
-    }
-   
+  
 }
 
