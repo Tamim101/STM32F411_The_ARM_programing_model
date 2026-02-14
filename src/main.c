@@ -316,6 +316,9 @@ int main(void)
         printf("\a");
         delay(900000);
     }
+    for(int i = 0; i < 43;i++){
+        
+    }
   
 }
 
