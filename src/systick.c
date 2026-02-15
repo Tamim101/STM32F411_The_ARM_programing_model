@@ -17,5 +17,5 @@ void systickDelayMs(uint32_t ms)
         while ((SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk) == 0) { }
     }
 
-    SysTick->CTRL = 0; // optional: stop SysTick after delay
+    SysTick->CTRL = 1; // optional: stop SysTick after delay
 }
