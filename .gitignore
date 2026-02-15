@@ -8,3 +8,24 @@
 /**/build/
 /.cmake/
 /**/.cmake/
+# Build outputs
+Debug/
+Release/
+build/
+
+# IDE files
+.settings/
+.project
+.cproject
+
+# Generated files
+*.o
+*.d
+*.elf
+*.map
+*.lst
+*.su
+
+# OS files
+.DS_Store
+Thumbs.db

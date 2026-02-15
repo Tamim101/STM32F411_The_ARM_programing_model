@@ -295,6 +295,8 @@
 
 #include <stdint.h>
 #include "stm32f1xx.h"
+#include "timers.h"
+#include "systick.h"
 
 #define LED_PIN   (1U << 5)   // PA5
 
@@ -311,14 +313,18 @@ int main(void)
     GPIOA->CRL &= ~(0xFUL << (5U * 4U));
     GPIOA->CRL |=  (0x2UL << (5U * 4U));
 
-    while (1) {
-        GPIOA->ODR ^= LED_PIN;
-        printf("\a");
-        delay(900000);
-    }
-    for(int i = 0; i < 43;i++){
-        
-    }
+    tim2_1hz_init();
+   
+
+  while (1)
+{
+    while (!(TIM2->SR & TIM_SR_UIF)) { }  // wait update event
+    TIM2->SR &= ~TIM_SR_UIF;              // clear flag
+
+    GPIOA->ODR ^= LED_PIN;
+}
+
+    
   
 }
 
