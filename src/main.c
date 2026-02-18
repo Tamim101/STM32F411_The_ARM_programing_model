@@ -322,7 +322,7 @@ int main(void)
     TIM2->SR &= ~TIM_SR_UIF;              // clear flag
 
     GPIOA->ODR ^= LED_PIN;
-    GPIOA->ODR ^= LED_PIN;
+  ;
 }
 
     
