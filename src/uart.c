@@ -1,48 +1,48 @@
-// #include "stm32f1xx.h"
+#include "stm32f1xx.h"
 
-// #include <stdio.h>
+#include <stdio.h>
 
-// static void usart2_tx_init_115200(void);
-// static void usart2_write(int ch);
+static void usart2_tx_init_115200(void);
+static void usart2_write(int ch);
 
-// int __io_putchar(int ch) {
-//     usart2_write(ch);
-//     return ch;
-// }
+int __io_putchar(int ch) {
+    usart2_write(ch);
+    return ch;
+}
 
-// int ultra_print_main(void) {
-//     usart2_tx_init_115200();
-//     while (1) {
-//         printf("hello its me stm32f103............\r\n");
-//     }
-// }
+int ultra_print_main(void) {
+    usart2_tx_init_115200();
+    while (1) {
+        printf("hello its me stm32f103............\r\n");
+    }
+}
 
-// static void usart2_tx_init_115200(void) {
-//     // 1) Enable GPIOA + AFIO + USART2 clocks
-//     RCC->APB2ENR |= RCC_APB2ENR_IOPAEN | RCC_APB2ENR_AFIOEN;
-//     RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
+static void usart2_tx_init_115200(void) {
+    // 1) Enable GPIOA + AFIO + USART2 clocks
+    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN | RCC_APB2ENR_AFIOEN;
+    RCC->APB1ENR |= RCC_APB1ENR_USART2EN;
 
-//     // 2) PA2 = USART2_TX
-//     // CRL for PA2: CNF2[1:0]=10 (AF push-pull), MODE2[1:0]=10 (2 MHz)
-//     // Clear bits for PA2 (bits 11:8), then set
-//     GPIOA->CRL &= ~(0xF << (2 * 4));
-//     GPIOA->CRL |=  (0xA << (2 * 4)); // 0b1010
+    // 2) PA2 = USART2_TX
+    // CRL for PA2: CNF2[1:0]=10 (AF push-pull), MODE2[1:0]=10 (2 MHz)
+    // Clear bits for PA2 (bits 11:8), then set
+    GPIOA->CRL &= ~(0xF << (2 * 4));
+    GPIOA->CRL |=  (0xA << (2 * 4)); // 0b1010
 
-//     // 3) Baud rate
-//     // If PCLK1 = 36MHz, 115200 => USARTDIV = 36,000,000/115,200 = 312.5
-//     // BRR = mantissa 312 (0x138), fraction .5 => 8 (0x8) because 0.5*16=8
-//     // BRR = 0x1388
-//     USART2->BRR = 0x1388;
+    // 3) Baud rate
+    // If PCLK1 = 36MHz, 115200 => USARTDIV = 36,000,000/115,200 = 312.5
+    // BRR = mantissa 312 (0x138), fraction .5 => 8 (0x8) because 0.5*16=8
+    // BRR = 0x1388
+    USART2->BRR = 0x1388;
 
-//     // 4) Enable transmitter + USART
-//     USART2->CR1 |= USART_CR1_TE;
-//     USART2->CR1 |= USART_CR1_UE;
-// }
+    // 4) Enable transmitter + USART
+    USART2->CR1 |= USART_CR1_TE;
+    USART2->CR1 |= USART_CR1_UE;
+}
 
-// static void usart2_write(int ch) {
-//     while (!(USART2->SR & USART_SR_TXE)) { }
-//     USART2->DR = (uint8_t)ch;
-// }
+static void usart2_write(int ch) {
+    while (!(USART2->SR & USART_SR_TXE)) { }
+    USART2->DR = (uint8_t)ch;
+}
 
 
 
