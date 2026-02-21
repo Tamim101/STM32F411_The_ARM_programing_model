@@ -55,10 +55,6 @@ static void usart2_write(int ch) {
 #define LED_PIN     LED
 
 
-#define SYSCLK_HZ   72000000UL
-#define BAUDRATE    115200UL
-#define LED         (1U<<10)
-#define LED_PIN     LED
 
 
 
