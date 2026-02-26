@@ -54,11 +54,6 @@ static void usart2_write(int ch) {
 #define LED         (1U<<10)
 #define LED_PIN     LED
 
-void buzzerOn() {
-  ledcWriteTone(BUZ_CH, BUZ_HZ);
-  ledcWrite(BUZ_CH, BUZ_DUTY);
-}
-
 
 
 static void uart2_set_baud(uint32_t pclk1_hz, uint32_t baud)
