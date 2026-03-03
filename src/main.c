@@ -293,40 +293,69 @@
 
 
 
-#include <stdint.h>
-#include "stm32f1xx.h"
-#include "timers.h"
-#include "systick.h"
+// #include <stdint.h>
+// #include "stm32f1xx.h"
+// #include "timers.h"
+// #include "systick.h"
 
-#define LED_PIN   (1U << 5)   // PA5
+// #define LED_PIN   (1U << 5)   // PA5
 
-static void delay(volatile uint32_t t) {
-    while (t--) { __asm__("nop"); }
-}
+// static void delay(volatile uint32_t t) {
+//     while (t--) { __asm__("nop"); }
+// }
 
-int main(void)
-{
-    // Enable GPIOA clock (F103: APB2)
-    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
+// int main(void)
+// {
+//     // Enable GPIOA clock (F103: APB2)
+//     RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
 
-    // PA5 output push-pull 2MHz (CRL, pin 5)
-    GPIOA->CRL &= ~(0xFUL << (5U * 4U));
-    GPIOA->CRL |=  (0x2UL << (5U * 4U));
+//     // PA5 output push-pull 2MHz (CRL, pin 5)
+//     GPIOA->CRL &= ~(0xFUL << (5U * 4U));
+//     GPIOA->CRL |=  (0x2UL << (5U * 4U));
 
-    tim2_1hz_init();
+//     tim2_1hz_init();
    
 
-  while (1)
-{
-    while (!(TIM2->SR & TIM_SR_UIF)) { }  // wait update event
-    TIM2->SR &= ~TIM_SR_UIF;              // clear flag
+//   while (1)
+// {
+//     while (!(TIM2->SR & TIM_SR_UIF)) { }  // wait update event
+//     TIM2->SR &= ~TIM_SR_UIF;              // clear flag
 
-    GPIOA->ODR ^= LED_PIN;
-  ;
-}
+//     GPIOA->ODR ^= LED_PIN;
+//   ;
+// }
 
     
   
+// }
+
+
+#include "stm32f1xx.h"
+#include "timers.h"
+
+#define LED_PIN   (1U <<5 )   // PA5
+
+int main(void)
+{
+    // Enable GPIOA clock (APB2 on STM32F1)
+    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
+
+    // PA5 output push-pull 2 MHz:
+    // CRL pin 5 -> bits [23:20] = CNF5[1:0] MODE5[1:0]
+    GPIOA->CRL &= ~(0xFUL << (5U * 4U));    // clear
+    GPIOA->CRL |=  (0x2UL << (5U * 4U));    // 0010: GP Push-pull, 2MHz
+
+    tim2_1hz_init();
+
+    while (1)
+    {
+        // Wait for timer overflow (update event)
+        while ((TIM2->SR & TIM_SR_UIF) == 0U) { }
+
+        // Clear all flags (safe + simple)
+        TIM2->SR = 0;
+
+        // Toggle LED
+        GPIOA->ODR ^= LED_PIN;
+    }
 }
-
-
