@@ -359,3 +359,9 @@ int main(void)
         GPIOA->ODR ^= LED_PIN;
     }
 }
+
+// here is the value 
+#include <stdio.h>
+void insart_sort(int a[],int key){
+
+}
