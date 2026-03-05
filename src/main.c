@@ -360,8 +360,19 @@ int main(void)
     }
 }
 
-// here is the value 
-#include <stdio.h>
-void insart_sort(int a[],int key){
+// // here is the value [5,2,5,6,3,2,4]
+// #include <stdio.h>
+// void insart_sort(int a[],int n){
+//     for(int i = 1; i < n; i++){   // 0,1,2,3,4,5,6
+//         int key = a[i];   // value instart 2
+//         int j = (i - 1);  // j = 0 
+//         while(j>=0 && a[j]>key){  // j = 0  and 5 > 2
+//             a[j+1] = a[j];
+//             i--;
 
-}
+//         }
+//         a[j+1] = key;   
+
+//     }
+
+// }
