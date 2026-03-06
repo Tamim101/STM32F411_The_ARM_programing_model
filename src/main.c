@@ -328,38 +328,38 @@
     
   
 // }
-
-
 #include "stm32f1xx.h"
 #include "timers.h"
 
-#define LED_PIN   (1U <<5 )   // PA5
+#define LED_PIN   (1U << 13)   // PC13 = onboard LED on Blue Pill
 
 int main(void)
 {
-    // Enable GPIOA clock (APB2 on STM32F1)
-    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
+    // Enable GPIOC clock
+    RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
 
-    // PA5 output push-pull 2 MHz:
-    // CRL pin 5 -> bits [23:20] = CNF5[1:0] MODE5[1:0]
-    GPIOA->CRL &= ~(0xFUL << (5U * 4U));    // clear
-    GPIOA->CRL |=  (0x2UL << (5U * 4U));    // 0010: GP Push-pull, 2MHz
+    // PC13 is in CRH (pins 8..15), not CRL
+    // MODE13 = 10 (output 2 MHz), CNF13 = 00 (general push-pull)
+    GPIOC->CRH &= ~(0xFUL << ((13U - 8U) * 4U));
+    GPIOC->CRH |=  (0x2UL << ((13U - 8U) * 4U));
+
+    // LED off initially (active-low LED)
+    GPIOC->BSRR = LED_PIN;
 
     tim2_1hz_init();
 
     while (1)
     {
-        // Wait for timer overflow (update event)
+        // Wait for timer update event
         while ((TIM2->SR & TIM_SR_UIF) == 0U) { }
 
-        // Clear all flags (safe + simple)
-        TIM2->SR = 0;
+        // Clear only UIF
+        TIM2->SR &= ~TIM_SR_UIF;
 
         // Toggle LED
-        GPIOA->ODR ^= LED_PIN;
+        GPIOC->ODR ^= LED_PIN;
     }
 }
-
 // // here is the value [5,2,5,6,3,2,4]
 // #include <stdio.h>
 // void insart_sort(int a[],int n){
