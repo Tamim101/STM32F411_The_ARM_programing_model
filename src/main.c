@@ -316,14 +316,14 @@
 //     tim2_1hz_init();
    
 
-  while (1)
-{
-    while (!(TIM2->SR & TIM_SR_UIF)) { }  // wait update event
-    TIM2->SR &= ~TIM_SR_UIF;              // clear flag
+//   while (1)
+// {
+//     while (!(TIM2->SR & TIM_SR_UIF)) { }  // wait update event
+//     TIM2->SR &= ~TIM_SR_UIF;              // clear flag
 
-    GPIOA->ODR ^= LED_PIN;
-  ;
-}
+//     GPIOA->ODR ^= LED_PIN;
+//   ;
+// }
 
     
   
