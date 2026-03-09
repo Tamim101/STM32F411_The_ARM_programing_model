@@ -376,3 +376,24 @@ int main(void)
 //     }
 
 // }
+// array a[i] = 1 2 3 4 
+// now the insert array is A = [7, 3, 5, 2, 6]
+#include <stdio.h>
+
+int main() {
+
+    float roll = 0;
+    float pitch = 0;
+    float yaw = 0;
+
+    roll = 10;   // tilt right
+    pitch = -5;  // tilt forward
+    yaw = 90;    // facing east
+
+    printf("Drone orientation:\n");
+    printf("Roll: %.2f\n", roll);
+    printf("Pitch: %.2f\n", pitch);
+    printf("Yaw: %.2f\n", yaw);
+
+    return 0;
+}
