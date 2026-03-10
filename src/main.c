@@ -360,40 +360,21 @@ int main(void)
         GPIOC->ODR ^= LED_PIN;
     }
 }
-// // here is the value [5,2,5,6,3,2,4]
-// #include <stdio.h>
-// void insart_sort(int a[],int n){
-//     for(int i = 1; i < n; i++){   // 0,1,2,3,4,5,6
-//         int key = a[i];   // value instart 2
-//         int j = (i - 1);  // j = 0 
-//         while(j>=0 && a[j]>key){  // j = 0  and 5 > 2
-//             a[j+1] = a[j];
-//             i--;
-
-//         }
-//         a[j+1] = key;   
-
-//     }
-
-// }
-// array a[i] = 1 2 3 4 
-// now the insert array is A = [7, 3, 5, 2, 6]
+// here is the value [5,2,5,6,3,2,4]
 #include <stdio.h>
+void insart_sort(int a[],int n){
+    for(int i = 1; i < n; i++){   // 0,1,2,3,4,5,6
+        int key = a[i];   // value instart 2
+        int j = (i - 1);  // j = 0 
+        while(j>=0 && a[j]>key){  // j = 0  and 5 > 2
+            a[j+1] = a[j];
+            i--;
 
-int main() {
+        }
+        a[j+1] = key;   
 
-    float roll = 0;
-    float pitch = 0;
-    float yaw = 0;
+    }
 
-    roll = 10;   // tilt right
-    pitch = -5;  // tilt forward
-    yaw = 90;    // facing east
-
-    printf("Drone orientation:\n");
-    printf("Roll: %.2f\n", roll);
-    printf("Pitch: %.2f\n", pitch);
-    printf("Yaw: %.2f\n", yaw);
-
-    return 0;
 }
+array a[i] = 1 2 3 4 
+now the insert array is A = [7, 3, 5, 2, 6]
