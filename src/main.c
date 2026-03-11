@@ -360,21 +360,26 @@ int main(void)
         GPIOC->ODR ^= LED_PIN;
     }
 }
-// here is the value [5,2,5,6,3,2,4]
+
 #include <stdio.h>
-void insart_sort(int a[],int n){
-    for(int i = 1; i < n; i++){   // 0,1,2,3,4,5,6
-        int key = a[i];   // value instart 2
-        int j = (i - 1);  // j = 0 
-        while(j>=0 && a[j]>key){  // j = 0  and 5 > 2
-            a[j+1] = a[j];
-            i--;
 
-        }
-        a[j+1] = key;   
+int main(){
 
-    }
+    double throttle = 500;
 
+    float roll = 20;
+    float pitch = -10;
+    float yaw = 5;
+
+    double m1 = throttle + pitch + roll - yaw;
+    float m2 = throttle + pitch - roll + yaw;
+    float m3 = throttle - pitch - roll - yaw;
+    float m4 = throttle - pitch + roll + yaw;
+
+    printf("Motor1: %f\n", m1);
+    printf("Motor2: %f\n", m2);
+    printf("Motor3: %f\n", m3);
+    printf("Motor4: %f\n", m4);
+
+    return 0;
 }
-array a[i] = 1 2 3 4 
-now the insert array is A = [7, 3, 5, 2, 6]
