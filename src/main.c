@@ -330,6 +330,7 @@
 // }
 #include "stm32f1xx.h"
 #include "timers.h"
+#include "intrupt.h"
 
 #define LED_PIN   (1U << 13)   // PC13 = onboard LED on Blue Pill
 
@@ -337,6 +338,7 @@ int main(void)
 {
     // Enable GPIOC clock
     RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
+    pc13_exti_init();
 
     // PC13 is in CRH (pins 8..15), not CRL
     // MODE13 = 10 (output 2 MHz), CNF13 = 00 (general push-pull)
@@ -359,27 +361,4 @@ int main(void)
         // Toggle LED
         GPIOC->ODR ^= LED_PIN;
     }
-}
-
-#include <stdio.h>
-
-int main(){
-
-    double throttle = 500;
-
-    float roll = 20;
-    float pitch = -10;
-    float yaw = 5;
-
-    double m1 = throttle + pitch + roll - yaw;
-    float m2 = throttle + pitch - roll + yaw;
-    float m3 = throttle - pitch - roll - yaw;
-    float m4 = throttle - pitch + roll + yaw;
-
-    printf("Motor1: %f\n", m1);
-    printf("Motor2: %f\n", m2);
-    printf("Motor3: %f\n", m3);
-    printf("Motor4: %f\n", m4);
-
-    return 0;
 }

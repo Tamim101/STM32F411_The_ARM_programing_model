@@ -2,7 +2,7 @@
 
 #define GPIOCEN   (1U << 4)   // RCC_APB2ENR_IOPCEN
 #define AFIOEN    (1U << 0)   // RCC_APB2ENR_AFIOEN
-
+volatile uint32_t exti_count = 0;
 void pc13_exti_init(void)
 {
     __disable_irq();
@@ -32,4 +32,13 @@ void pc13_exti_init(void)
     NVIC_EnableIRQ(EXTI15_10_IRQn);
 
     __enable_irq();
+}
+
+void EXTI15_10_IRQHandler(void)
+{
+    if (EXTI->PR & (1U << 13))
+    {
+        exti_count++;              // observable test
+        EXTI->PR = (1U << 13);     // clear pending bit
+    }
 }
