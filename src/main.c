@@ -350,16 +350,16 @@ int main(void)
 
     tim2_1hz_init();
 
-    // while (1)
-    // {
-    //     // Wait for timer update event
-    //     while ((TIM2->SR & TIM_SR_UIF) == 0U) { }
+    while (1)
+    {
+        // Wait for timer update event
+        while ((TIM2->SR & TIM_SR_UIF) == 0U) { }
 
-    //     // Clear only UIF
-    //     TIM2->SR &= ~TIM_SR_UIF;
+        // Clear only UIF
+        TIM2->SR &= ~TIM_SR_UIF;
 
-    //     // Toggle LED
-    //     GPIOC->ODR ^= LED_PIN;
-    // }
+        // Toggle LED
+        GPIOC->ODR ^= LED_PIN;
+    }
     
 }
