@@ -329,37 +329,83 @@
   
 // }
 #include "stm32f1xx.h"
-#include "timers.h"
-#include "intrupt.h"
 
-#define LED_PIN   (1U << 13)   // PC13 = onboard LED on Blue Pill
+#define LED_PIN       (1U << 13)   // PC13 onboard LED
+#define BUTTON_PIN    (1U << 0)    // PA0 button
+
+volatile uint8_t button_pressed = 0;
+
+static void pc13_led_init(void);
+static void pa0_exti_init(void);
 
 int main(void)
 {
-    // Enable GPIOC clock
-    RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
-    pc13_exti_init();
+    pc13_led_init();
+    pa0_exti_init();
 
-    // PC13 is in CRH (pins 8..15), not CRL
-    // MODE13 = 10 (output 2 MHz), CNF13 = 00 (general push-pull)
-    GPIOC->CRH &= ~(0xFUL << ((13U - 8U) * 4U));
-    GPIOC->CRH |=  (0x2UL << ((13U - 8U) * 4U));
-
-    // LED off initially (active-low LED)
+    // LED OFF initially (Blue Pill LED is active-low)
     GPIOC->BSRR = LED_PIN;
-
-    tim2_1hz_init();
 
     while (1)
     {
-        // Wait for timer update event
-        while ((TIM2->SR & TIM_SR_UIF) == 0U) { }
+        if (button_pressed)
+        {
+            button_pressed = 0;
 
-        // Clear only UIF
-        TIM2->SR &= ~TIM_SR_UIF;
-
-        // Toggle LED
-        GPIOC->ODR ^= LED_PIN;
+            // Toggle LED
+            GPIOC->ODR ^= LED_PIN;
+        }
     }
-    
+}
+
+static void pc13_led_init(void)
+{
+    // Enable GPIOC clock
+    RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
+
+    // PC13 = output 2 MHz, push-pull
+    GPIOC->CRH &= ~(0xFUL << ((13U - 8U) * 4U));
+    GPIOC->CRH |=  (0x2UL << ((13U - 8U) * 4U));
+
+    // LED OFF initially
+    GPIOC->BSRR = LED_PIN;
+}
+
+static void pa0_exti_init(void)
+{
+    // Enable GPIOA and AFIO clocks
+    RCC->APB2ENR |= RCC_APB2ENR_IOPAEN;
+    RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
+
+    // PA0 input with pull-up/pull-down
+    GPIOA->CRL &= ~(0xFUL << (0U * 4U));
+    GPIOA->CRL |=  (0x8UL << (0U * 4U));   // input pull-up/pull-down
+
+    // Pull-up on PA0
+    GPIOA->BSRR = BUTTON_PIN;
+
+    // Map EXTI0 to PA0
+    AFIO->EXTICR[0] &= ~(0xFUL << 0);
+
+    // Unmask EXTI0
+    EXTI->IMR |= BUTTON_PIN;
+
+    // Trigger on falling edge
+    EXTI->FTSR |= BUTTON_PIN;
+    EXTI->RTSR &= ~BUTTON_PIN;
+
+    // Clear pending flag
+    EXTI->PR = BUTTON_PIN;
+
+    // Enable EXTI0 interrupt in NVIC
+    NVIC_EnableIRQ(EXTI0_IRQn);
+}
+
+void EXTI0_IRQHandler(void)
+{
+    if (EXTI->PR & BUTTON_PIN)
+    {
+        EXTI->PR = BUTTON_PIN;   // clear pending bit
+        button_pressed = 1;
+    }
 }
