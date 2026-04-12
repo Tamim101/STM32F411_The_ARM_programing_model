@@ -19,17 +19,17 @@
 #define GPIOAEN                      (1U<<0)
 #define LED_PIN                      PIN5
 
-int main(void){
-    RCC_AHB1EN_R |=  GPIOAEN;
-    GPIOA_MODE_R |= (1U<<10);  // 0 TO 10 BIT
-    GPIOA_MODE_R &=~(1U<<11);   // 11 TO 0 BIT 
-    while(1){
-        GPIOA_OD_R ^= LED_PIN;
-        for(int i = 0; i<100000; i++){
+// int main(void){
+//     RCC_AHB1EN_R |=  GPIOAEN;
+//     GPIOA_MODE_R |= (1U<<10);  // 0 TO 10 BIT
+//     GPIOA_MODE_R &=~(1U<<11);   // 11 TO 0 BIT 
+//     while(1){
+//         GPIOA_OD_R ^= LED_PIN;
+//         for(int i = 0; i<100000; i++){
             
-        }
+//         }
 
-    }
+//     }
     
 
 }
