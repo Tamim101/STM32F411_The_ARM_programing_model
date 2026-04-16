@@ -163,7 +163,7 @@ print("""
   A resistor that should be 4.7 kΩ but you calculated
   4.7 Ω will blow up your circuit or just not work.
 """)
-print("Run complete. Every number above came from one formula.")
-print("The prefix is the most important part of the number.")
+# print("Run complete. Every number above came from one formula.")
+# print("The prefix is the most important part of the number.")
  
 
