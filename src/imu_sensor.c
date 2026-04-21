@@ -112,11 +112,11 @@ static volatile uint32_t tick_ms = 0;
 void SysTick_Handler(void) { tick_ms++; }
 
 /* ── Delay in milliseconds ────────────────────────────────────────────── */
-static void delay_ms(uint32_t ms)
-{
-    uint32_t start = tick_ms;
-    while ((tick_ms - start) < ms);
-}
+// static void delay_ms(uint32_t ms)
+// {
+//     uint32_t start = tick_ms;
+//     while ((tick_ms - start) < ms);
+// }
 
 /* ═══════════════════════════════════════════════════════════════════════
    CLOCK SETUP
