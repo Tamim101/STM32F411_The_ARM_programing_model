@@ -49,7 +49,8 @@ SCREEN_H = 750
 FPS      = 60
 
 # Serial settings (change COM port to match your USB-TTL adapter)
-SERIAL_PORT = "ttyUSB0"   # Windows: "COM3", Linux: "/dev/ttyUSB0", Mac: "/dev/cu.usbserial-..."
+# STM32 wiring: PA9 (TX) → USB-TTL RX,  PA10 (RX) → USB-TTL TX
+SERIAL_PORT = "COM3"   # Windows: "COM3", Linux: "/dev/ttyUSB0", Mac: "/dev/cu.usbserial-..."
 SERIAL_BAUD = 115200
 
 # Graph settings
@@ -93,53 +94,132 @@ TEXT_DIM    = (100, 120, 140)
 
 class DroneSimulator:
     """
-    Simple 1D rotational physics simulation.
-    Simulates a drone trying to keep roll = setpoint.
+    Realistic 1D rotational physics simulation with real IMU behaviour.
+
+    A real drone NEVER needs a "kick" to start — it has continuous disturbances:
+      1. Sensor noise     — gyro and accel always jitter (electronics, vibration)
+      2. Gyro drift       — tiny DC bias causes angle to slowly creep
+      3. Gravity torque   — if drone tilts even 0.1°, gravity pulls it further
+      4. Motor imbalance  — one motor always slightly weaker than others
+      5. Air turbulence   — random small gusts, especially near ground
+
+    The SPACEBAR is still there for a BIG gust test, but the drone now moves
+    continuously on its own — exactly like a real flying drone.
 
     Physics:  τ = I × α
-      τ = torque (our PID output)
-      I = moment of inertia (resistance to rotation — heavier/bigger = harder to spin)
-      α = angular acceleration (how fast rotation rate is changing)
-
-    Each step:
-      angular_accel  = torque / inertia
-      angular_vel   += angular_accel × dt
-      angle         += angular_vel × dt
-      (+ damping: air resistance slows rotation slightly)
+      τ = torque (our PID output + disturbances)
+      I = moment of inertia
+      α = angular acceleration
     """
 
     def __init__(self):
-        self.angle        = 0.0   # current roll angle (degrees)
-        self.angular_vel  = 0.0   # rotation rate (deg/s)
-        self.inertia      = 0.08  # kg·m² — how hard it is to rotate
-        self.damping      = 0.25  # air resistance coefficient
+        self.angle        = 2.0    # start with small tilt (not perfect zero — real world)
+        self.angular_vel  = 0.0
+        self.inertia      = 0.08   # kg·m²
+        self.damping      = 0.25   # air resistance
+
+        # --- Real IMU disturbance parameters ---
+        self.gyro_noise_std   = 0.8    # gyro white noise  (°/s RMS) — MPU6050 spec ~0.05 raw
+                                       # we amplify slightly so it's visible in simulator
+        self.accel_noise_std  = 0.3    # accelerometer noise (degrees of angle error)
+        self.gyro_drift_rate  = 0.02   # gyro DC bias drift (°/s) — slow creep
+        self.gyro_drift       = 0.0    # current accumulated drift offset
+        self.motor_imbalance  = 1.5    # constant torque from unequal motors (°/s²)
+                                       # like one motor 2% weaker than the opposite
+
+        # Turbulence state (random walk)
+        self._turb_vel        = 0.0    # current turbulence angular velocity
+        self._noise_seed      = 0.0
+
+        # Random number generator state (simple LCG — no random module needed in C)
+        self._rng_state = 12345
+
+    def _rand(self):
+        """Simple fast pseudo-random float in range [-1, +1]"""
+        # LCG: xn+1 = (a × xn + c) mod m
+        self._rng_state = (1664525 * self._rng_state + 1013904223) & 0xFFFFFFFF
+        return (self._rng_state / 0x7FFFFFFF) - 1.0
+
+    def _gaussian(self, std):
+        """Approximate Gaussian noise using Box-Muller (two uniform samples)"""
+        # Sum of multiple uniform randoms approximates Gaussian (Central Limit Theorem)
+        s = 0.0
+        for _ in range(4):
+            s += self._rand()
+        return s * std * 0.5  # scale to desired std deviation
 
     def reset(self):
-        self.angle       = 0.0
+        self.angle       = 2.0   # small initial tilt, not perfect zero
         self.angular_vel = 0.0
+        self.gyro_drift  = 0.0
+        self._turb_vel   = 0.0
 
     def kick(self, impulse=80.0):
-        """Apply a sudden angular velocity disturbance (like a wind gust)"""
+        """Apply a large sudden disturbance — simulates a wind gust or stick input"""
         self.angular_vel += impulse
+
+    def get_noisy_angle(self):
+        """
+        Returns what the IMU ACTUALLY MEASURES — not the true angle.
+        This is what goes into the PID controller, just like on real hardware.
+
+        The MPU6050 complementary filter output has:
+          - Gyro integration noise (small, fast jitter)
+          - Accelerometer angle noise (slightly larger, slower)
+          - Gyro drift (very slow creep in one direction)
+        """
+        # True angle + sensor noise + gyro drift accumulated
+        measured = self.angle + self._gaussian(self.accel_noise_std) + self.gyro_drift
+        return measured
 
     def step(self, torque, dt):
         """
-        Advance physics by dt seconds with given torque applied.
-        torque: our PID output (positive = rotate right, negative = left)
-        dt: time step in seconds
+        Advance physics by dt seconds.
+        torque = PID output command
+        Returns the TRUE physical angle (before sensor noise is added).
+        Call get_noisy_angle() separately to get what PID sees.
         """
-        # τ = I × α  →  α = τ / I
-        angular_accel = torque / self.inertia
+        # --- 1. Motor imbalance torque ---
+        # One motor slightly stronger on one side → constant lean tendency
+        # This is why I term exists — to correct this permanent offset
+        imbalance_torque = self.motor_imbalance
 
-        # Damping: proportional to current speed (like air friction)
-        damping_torque = -self.damping * self.angular_vel
-        angular_accel += damping_torque / self.inertia
+        # --- 2. Gravity destabilizing torque ---
+        # A tilted drone: gravity pulls the heavy side further down.
+        # Torque = m × g × d × sin(angle) ≈ m × g × d × angle  (small angles)
+        # We approximate: gravity_torque = 8.0 × sin(angle_rad)
+        # This makes the drone UNSTABLE without PID — just like reality.
+        import math as _math
+        gravity_torque = 8.0 * _math.sin(_math.radians(self.angle))
+        # Why 8.0? Chosen so that at 10° tilt the gravity torque matches
+        # a typical 250mm quadcopter. You can tune this value.
 
-        # Euler integration
+        # --- 3. Air turbulence (random walk) ---
+        # Real air is never perfectly still. Turbulence is modelled as a
+        # random walk: each step nudges the turbulence velocity slightly.
+        self._turb_vel += self._gaussian(0.4)  # random nudge each frame
+        self._turb_vel *= 0.92                 # decay: turbulence dissipates
+        turb_torque = self._turb_vel * 0.5
+
+        # --- 4. Gyro drift evolution ---
+        # The drift itself slowly changes (temperature, vibration)
+        self.gyro_drift += self._gaussian(0.001) * dt
+        self.gyro_drift  = max(-2.0, min(2.0, self.gyro_drift))  # clamp
+
+        # --- 5. Total angular acceleration ---
+        # τ_total = PID_torque + disturbances
+        # α = τ / I
+        total_torque  = torque + imbalance_torque + gravity_torque + turb_torque
+        angular_accel = total_torque / self.inertia
+
+        # Damping (air resistance, proportional to angular velocity)
+        angular_accel -= (self.damping * self.angular_vel) / self.inertia
+
+        # --- 6. Euler integration ---
         self.angular_vel += angular_accel * dt
         self.angle       += self.angular_vel * dt
 
-        # Physical limits (drone would crash if tilted too much)
+        # Physical limits
         self.angle = max(-89.0, min(89.0, self.angle))
 
         return self.angle
@@ -174,6 +254,9 @@ class PIDController:
         self.i_term     = 0.0
         self.last_error = 0.0
         self.output     = 0.0
+        self.p_term     = 0.0
+        self.i_term_val = 0.0
+        self.d_term     = 0.0
 
     def update(self, measured_angle, dt):
         error = self.setpoint - measured_angle
@@ -421,7 +504,7 @@ def draw_gain_slider(surface, x, y, label, value, min_v, max_v, color,
 def main():
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
-    pygame.display.set_caption("Drone PID Simulator — STM32")
+    pygame.display.set_caption("Drone PID Simulator — Stage 2 Learning Tool")
     clock = pygame.time.Clock()
 
     # Fonts
@@ -453,6 +536,7 @@ def main():
     stm32_p = stm32_i = stm32_d = 0.0
     stm32_ready  = False
     serial_error = ""
+    # No kick needed — simulator now has real physics disturbances from the start
 
     # Display toggles
     show_pid_terms = True
@@ -471,10 +555,10 @@ def main():
     # Explanation text for each mode
     explanations = {
         'sim': [
-            "SIMULATOR MODE  — No hardware needed",
-            "Press SPACE for a disturbance kick",
-            "Tune Kp/Ki/Kd and watch the response",
-            "Press 1/2/3 to try tuning presets",
+            "Real physics: noise + drift + gravity + imbalance",
+            "PID fights disturbances automatically — no kick needed",
+            "SPACE = big wind gust (extreme disturbance test)",
+            "Tune Kp/Ki/Kd — watch the response change live",
         ],
         'stm32': [
             "STM32 MODE  — Real IMU data from Blue Pill",
@@ -586,10 +670,23 @@ def main():
         roll_angle = 0.0
 
         if mode == 'sim':
-            roll_angle  = sim.angle
-            pid_out     = pid.update(roll_angle, dt)
-            # Apply PID output as torque to physics simulation
+            # TRUE angle = what physically happened (for display/graph)
+            true_angle = sim.angle
+
+            # MEASURED angle = what IMU reports (noise + drift) — this is what PID sees
+            # On a real drone, PID never gets the perfect true angle.
+            # It always gets the complementary filter output which has noise.
+            measured_angle = sim.get_noisy_angle()
+
+            # PID runs on the MEASURED angle (noisy) — just like real STM32 code
+            pid_out = pid.update(measured_angle, dt)
+            pid.output = pid_out
+
+            # Physics advances with PID torque + internal disturbances
             sim.step(pid_out, dt)
+
+            # For display we show the true angle so user can see real vs measured
+            roll_angle = true_angle
 
         # ================================================================
         # UPDATE — STM32 MODE
