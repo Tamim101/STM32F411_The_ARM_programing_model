@@ -252,6 +252,12 @@
 #define I2C_SR1_BTF     (1UL << 2)  /* Byte Transfer Finished               */
 #define I2C_SR1_RXNE    (1UL << 6)  /* Receive buffer not empty (byte ready)*/
 #define I2C_SR1_TXE     (1UL << 7)  /* Transmit buffer empty (send next)    */
+/* I2C SR1 bits — we poll these to know when each step completes */
+#define I2C_SR1_SB      (1UL << 0)  /* Start Bit generated (START sent OK)  */
+#define I2C_SR1_ADDR    (1UL << 1)  /* Address sent + acknowledged by slave */
+#define I2C_SR1_BTF     (1UL << 2)  /* Byte Transfer Finished               */
+#define I2C_SR1_RXNE    (1UL << 6)  /* Receive buffer not empty (byte ready)*/
+#define I2C_SR1_TXE     (1UL << 7)  /* Transmit buffer empty (send next)    */
 
 
 /* ============================================================================
