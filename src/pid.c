@@ -381,7 +381,7 @@ float Kd = 0.4f;    /* Derivative gain   */
 /* Loop timing */
 float dt = 0.001f;  /* seconds between loops — starts at 1ms, measured each loop */
 
-float dt = 0.001f;
+
 /* ============================================================================
  * SECTION 4 — CUSTOM MATH (no <math.h>)
  * ============================================================================
