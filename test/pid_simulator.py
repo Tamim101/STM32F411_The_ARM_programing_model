@@ -133,6 +133,8 @@ class DroneSimulator:
 
         # Random number generator state (simple LCG — no random module needed in C)
         self._rng_state = 12345
+        self._rng_state = 12345
+
 
     def _rand(self):
         """Simple fast pseudo-random float in range [-1, +1]"""
