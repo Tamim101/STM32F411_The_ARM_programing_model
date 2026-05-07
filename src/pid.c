@@ -1485,6 +1485,7 @@ int main(void) {
 
         /* --- BLOCK 7: Pace loop to exactly 1ms (1kHz) --- */
         while ((get_micros() - t0) < 1000);
+           while ((get_micros() - t0) < 1000);
         /*
          * Spin here until 1000 microseconds have elapsed since loop start.
          * This makes dt consistent regardless of how long blocks 1-6 took.
