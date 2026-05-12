@@ -913,436 +913,100 @@
 // }
 
 /**
- * @file imu_read_sensor_fixed.c
- *
- * STM32F103 BluePill + MPU6050
- * Uses HSI 8MHz (works on clones with no crystal)
+ * @file stm32_no_mpu.c
  * 
- * platformio.ini:
- * [env:genericSTM32F103C8]
- * platform        = ststm32
- * board           = genericSTM32F103C8
- * framework       = cmsis
- * upload_protocol = stlink
- * build_flags     = -Os
- *
- * Wiring:
- *   MPU6050 VCC → 3.3V
- *   MPU6050 GND → GND
- *   MPU6050 SCL → PB6  (4.7kΩ pull-up to 3.3V)
- *   MPU6050 SDA → PB7  (4.7kΩ pull-up to 3.3V)
- *
- *   USB Serial RX → PA9  (STM32 TX)
- *   USB Serial TX → PA10 (STM32 RX)
- *   USB Serial GND → GND
- *
- * Serial monitor: 115200 baud
+ * STM32F103 - UART + LED only (NO MPU6050)
+ * Use this to confirm UART/GPIO work before adding I2C
  */
 
 #include <stdint.h>
-#include <math.h>
 
-// ============================================================================
-// REGISTERS
-// ============================================================================
+#define RCC_APB2ENR (*(volatile uint32_t*)0x40021018UL)
+#define GPIOA_CRH   (*(volatile uint32_t*)0x40010804UL)
+#define GPIOC_CRH   (*(volatile uint32_t*)0x40011004UL)
+#define GPIOC_ODR   (*(volatile uint32_t*)0x4001100CUL)
 
-#define RCC_BASE    0x40021000UL
-#define GPIOA_BASE  0x40010800UL
-#define GPIOB_BASE  0x40010C00UL
-#define GPIOC_BASE  0x40011000UL
-#define I2C1_BASE   0x40005400UL
-#define USART1_BASE 0x40013800UL
-#define STK_BASE    0xE000E010UL
+#define USART1_SR   (*(volatile uint32_t*)0x40013800UL)
+#define USART1_DR   (*(volatile uint32_t*)0x40013804UL)
+#define USART1_BRR  (*(volatile uint32_t*)0x40013808UL)
+#define USART1_CR1  (*(volatile uint32_t*)0x4001380CUL)
 
-#define RCC_CR      (*(volatile uint32_t*)(RCC_BASE   + 0x00))
-#define RCC_CFGR    (*(volatile uint32_t*)(RCC_BASE   + 0x04))
-#define RCC_APB2ENR (*(volatile uint32_t*)(RCC_BASE   + 0x18))
-#define RCC_APB1ENR (*(volatile uint32_t*)(RCC_BASE   + 0x1C))
+#define STK_CTRL    (*(volatile uint32_t*)0xE000E010UL)
+#define STK_LOAD    (*(volatile uint32_t*)0xE000E014UL)
+#define STK_VAL     (*(volatile uint32_t*)0xE000E018UL)
 
-#define GPIOA_CRH   (*(volatile uint32_t*)(GPIOA_BASE + 0x04))
-#define GPIOB_CRL   (*(volatile uint32_t*)(GPIOB_BASE + 0x00))
-#define GPIOC_CRH   (*(volatile uint32_t*)(GPIOC_BASE + 0x04))
-#define GPIOC_ODR   (*(volatile uint32_t*)(GPIOC_BASE + 0x0C))
+volatile uint32_t ms_count = 0;
 
-#define I2C1_CR1    (*(volatile uint32_t*)(I2C1_BASE  + 0x00))
-#define I2C1_CR2    (*(volatile uint32_t*)(I2C1_BASE  + 0x04))
-#define I2C1_DR     (*(volatile uint32_t*)(I2C1_BASE  + 0x10))
-#define I2C1_SR1    (*(volatile uint32_t*)(I2C1_BASE  + 0x14))
-#define I2C1_SR2    (*(volatile uint32_t*)(I2C1_BASE  + 0x18))
-#define I2C1_CCR    (*(volatile uint32_t*)(I2C1_BASE  + 0x1C))
-#define I2C1_TRISE  (*(volatile uint32_t*)(I2C1_BASE  + 0x20))
-
-#define USART1_SR   (*(volatile uint32_t*)(USART1_BASE + 0x00))
-#define USART1_DR   (*(volatile uint32_t*)(USART1_BASE + 0x04))
-#define USART1_BRR  (*(volatile uint32_t*)(USART1_BASE + 0x08))
-#define USART1_CR1  (*(volatile uint32_t*)(USART1_BASE + 0x0C))
-
-#define STK_CTRL    (*(volatile uint32_t*)(STK_BASE + 0x00))
-#define STK_LOAD    (*(volatile uint32_t*)(STK_BASE + 0x04))
-#define STK_VAL     (*(volatile uint32_t*)(STK_BASE + 0x08))
-
-// MPU6050 registers
-#define MPU_ADDR    0x68
-#define MPU_WHO     0x75
-#define MPU_PWR     0x6B
-#define MPU_SMPL    0x19
-#define MPU_CFG     0x1A
-#define MPU_GCFG    0x1B
-#define MPU_ACFG    0x1C
-#define MPU_INTEN   0x38
-#define MPU_DATA    0x3B
-
-#define PI          3.14159265f
-#define ACCEL_SC    (9.81f / 16384.0f)
-#define GYRO_SC     (1.0f  / 131.072f)
-#define GYRO_W      0.98f
-#define DT          0.01f
-
-// ============================================================================
-// GLOBALS
-// ============================================================================
-
-volatile uint32_t ms = 0;
-
-static int16_t off_ax, off_ay, off_az;
-static int16_t off_gx, off_gy, off_gz;
-static float roll_f = 0, pitch_f = 0, yaw_f = 0;
-
-// ============================================================================
-// SYSTICK
-// ============================================================================
-
-void SysTick_Handler(void) { ms++; }
+void SysTick_Handler(void) {
+    ms_count++;
+}
 
 void systick_init(void) {
-    // 8MHz → 1ms tick
     STK_LOAD = 8000 - 1;
-    STK_VAL  = 0;
+    STK_VAL = 0;
     STK_CTRL = 0x07;
 }
 
-void delay_ms(uint32_t d) {
-    uint32_t t = ms;
-    while ((ms - t) < d);
+void delay_ms(uint32_t ms) {
+    uint32_t start = ms_count;
+    while ((ms_count - start) < ms);
 }
-
-// ============================================================================
-// CLOCK — Simple: just use HSI 8MHz, no PLL
-// ============================================================================
-
-void clock_init(void) {
-    // Make sure HSI is on
-    RCC_CR |= (1 << 0);
-    while (!(RCC_CR & (1 << 1)));
-    
-    // Use HSI directly (no PLL)
-    RCC_CFGR = (RCC_CFGR & ~3) | 0;  // SW = HSI
-    while ((RCC_CFGR & 0xC) != 0);
-}
-
-// ============================================================================
-// GPIO
-// ============================================================================
-
-void gpio_init(void) {
-    RCC_APB2ENR |= (1<<0)|(1<<2)|(1<<3)|(1<<4);
-
-    // PA9  TX  — Alt func push-pull 50MHz
-    GPIOA_CRH = (GPIOA_CRH & 0xFFFFFF0F) | 0x000000B0;
-    // PA10 RX  — floating input
-    GPIOA_CRH = (GPIOA_CRH & 0xFFFFF0FF) | 0x00000400;
-    // PB6  SCL — alt func open-drain 50MHz
-    GPIOB_CRL = (GPIOB_CRL & 0xF0FFFFFF) | 0x0F000000;
-    // PB7  SDA — alt func open-drain 50MHz
-    GPIOB_CRL = (GPIOB_CRL & 0x0FFFFFFF) | 0xF0000000;
-    // PC13 LED — output push-pull 2MHz
-    GPIOC_CRH = (GPIOC_CRH & 0xFF0FFFFF) | 0x00200000;
-
-    GPIOC_ODR |= (1 << 13);  // LED off
-}
-
-// ============================================================================
-// UART — 115200 baud at 8MHz
-// ============================================================================
 
 void uart_init(void) {
-    RCC_APB2ENR |= (1 << 14);
-    // BRR = 8,000,000 / 115200 = 69.44 → 69 (0x45)
-    USART1_BRR = 69;
-    USART1_CR1 = (1<<13)|(1<<3)|(1<<2);  // UE TE RE
+    RCC_APB2ENR |= (1 << 2) | (1 << 14);  // GPIOA, USART1
+    GPIOA_CRH = (GPIOA_CRH & 0xFFFFFF0F) | 0x000000B0;  // PA9 TX
+    USART1_BRR = 69;  // 115200 baud at 8MHz
+    USART1_CR1 = 0x200C;  // UE, TE, RE
 }
 
-void uart_char(char c) {
-    while (!(USART1_SR & (1<<7)));
-    USART1_DR = (uint8_t)c;
+void uart_tx(char c) {
+    while (!(USART1_SR & (1 << 7)));
+    USART1_DR = c;
 }
 
-void uart_str(const char *s) { 
-    while (*s) uart_char(*s++); 
+void uart_str(const char *s) {
+    while (*s) uart_tx(*s++);
 }
 
 void uart_int(int32_t n) {
-    char buf[12]; uint8_t i = 0;
-    if (n < 0) { uart_char('-'); n = -n; }
-    if (n == 0) { uart_char('0'); return; }
+    char buf[12];
+    int i = 0;
+    if (n < 0) { uart_tx('-'); n = -n; }
+    if (n == 0) { uart_tx('0'); return; }
     while (n > 0) { buf[i++] = '0' + (n % 10); n /= 10; }
-    while (i--) uart_char(buf[i]);
+    while (i--) uart_tx(buf[i]);
 }
 
-void uart_float(float f) {
-    if (f < 0.0f) { uart_char('-'); f = -f; }
-    int32_t w = (int32_t)f;
-    int32_t d = (int32_t)((f - (float)w) * 100.0f + 0.5f);
-    if (d >= 100) { w++; d -= 100; }
-    uart_int(w);
-    uart_char('.');
-    if (d < 10) uart_char('0');
-    uart_int(d);
+void gpio_init(void) {
+    RCC_APB2ENR |= (1 << 4);  // GPIOC
+    GPIOC_CRH = (GPIOC_CRH & 0xFF0FFFFF) | 0x00200000;  // PC13
+    GPIOC_ODR |= (1 << 13);  // LED off
 }
-
-// ============================================================================
-// I2C — 100 kHz at 8MHz
-// ============================================================================
-
-void i2c_init(void) {
-    RCC_APB1ENR |= (1 << 21);
-    I2C1_CR1 = 0;
-    I2C1_CR1 |= (1 << 15); 
-    delay_ms(2);
-    I2C1_CR1 &= ~(1 << 15);
-
-    // PCLK1 = 4MHz (8MHz/2)
-    I2C1_CR2   = 4;
-    I2C1_CCR   = 20;  // 4MHz / (2 * 100kHz) = 20
-    I2C1_TRISE = 5;
-    I2C1_CR1  |= (1 << 0);
-}
-
-static uint8_t i2c_start(void) {
-    I2C1_CR1 |= (1<<10)|(1<<8);
-    uint32_t t = 50000; 
-    while (!(I2C1_SR1 & 1) && --t); 
-    return t > 0;
-}
-
-static void i2c_stop(void) { 
-    I2C1_CR1 |= (1<<9); 
-}
-
-static uint8_t i2c_addr(uint8_t addr, uint8_t rw) {
-    I2C1_DR = (addr<<1)|rw;
-    uint32_t t = 50000;
-    while (!(I2C1_SR1 & 2) && --t) {
-        if (I2C1_SR1 & 0x0400) { I2C1_SR1 &= ~0x0400; return 0; }
-    }
-    if (!t) return 0;
-    (void)I2C1_SR2; 
-    return 1;
-}
-
-uint8_t i2c_write(uint8_t addr, uint8_t *d, uint16_t len) {
-    if (!i2c_start()) return 0;
-    if (!i2c_addr(addr, 0)) { i2c_stop(); return 0; }
-    for (uint16_t i = 0; i < len; i++) {
-        I2C1_DR = d[i];
-        uint32_t t = 50000; 
-        while (!(I2C1_SR1 & 4) && --t);
-        if (!t) { i2c_stop(); return 0; }
-    }
-    i2c_stop(); 
-    return 1;
-}
-
-uint8_t i2c_read(uint8_t addr, uint8_t *d, uint16_t len) {
-    I2C1_CR1 |= (1<<10);
-    if (!i2c_start()) return 0;
-    if (!i2c_addr(addr, 1)) { i2c_stop(); return 0; }
-    for (uint16_t i = 0; i < len; i++) {
-        if (i == len-1) I2C1_CR1 &= ~(1<<10);
-        uint32_t t = 50000; 
-        while (!(I2C1_SR1 & 0x40) && --t);
-        if (!t) { i2c_stop(); return 0; }
-        d[i] = (uint8_t)I2C1_DR;
-    }
-    i2c_stop(); 
-    I2C1_CR1 |= (1<<10); 
-    return 1;
-}
-
-// ============================================================================
-// MPU6050
-// ============================================================================
-
-static uint8_t mpu_wr(uint8_t r, uint8_t v) {
-    uint8_t d[2]={r,v}; 
-    return i2c_write(MPU_ADDR,d,2);
-}
-
-static uint8_t mpu_rd(uint8_t r, uint8_t *b, uint8_t n) {
-    if (!i2c_write(MPU_ADDR,&r,1)) return 0;
-    return i2c_read(MPU_ADDR,b,n);
-}
-
-uint8_t mpu_init(void) {
-    uint8_t who = 0;
-    if (!mpu_rd(MPU_WHO, &who, 1)) {
-        uart_str("ERR: I2C failed. Check PB6/PB7 and pull-ups!\r\n");
-        return 0;
-    }
-
-    uart_str("WHO_AM_I = 0x");
-    uart_char("0123456789ABCDEF"[(who>>4)&0xF]);
-    uart_char("0123456789ABCDEF"[who&0xF]);
-    uart_str("\r\n");
-
-    if (who != 0x68) {
-        uart_str("ERR: not 0x68. Wrong sensor or wiring issue.\r\n");
-        return 0;
-    }
-
-    mpu_wr(MPU_PWR,  0x00); 
-    delay_ms(100);
-    mpu_wr(MPU_SMPL, 9);
-    mpu_wr(MPU_CFG,  0x03);
-    mpu_wr(MPU_GCFG, 0x00);
-    mpu_wr(MPU_ACFG, 0x00);
-    mpu_wr(MPU_INTEN,0x00);
-    delay_ms(50);
-
-    uart_str("Calibrating... keep board FLAT and STILL\r\n");
-
-    int32_t sax=0,say=0,saz=0,sgx=0,sgy=0,sgz=0; 
-    int n=0;
-    uint8_t raw[14];
-    
-    for (int i = 0; i < 256; i++) {
-        if (mpu_rd(MPU_DATA, raw, 14)) {
-            sax+=(int16_t)((raw[0]<<8)|raw[1]);
-            say+=(int16_t)((raw[2]<<8)|raw[3]);
-            saz+=(int16_t)((raw[4]<<8)|raw[5]);
-            sgx+=(int16_t)((raw[8]<<8)|raw[9]);
-            sgy+=(int16_t)((raw[10]<<8)|raw[11]);
-            sgz+=(int16_t)((raw[12]<<8)|raw[13]);
-            n++;
-        }
-        delay_ms(5);
-    }
-    
-    if (!n) { 
-        uart_str("ERR: calibration failed\r\n"); 
-        return 0; 
-    }
-
-    off_ax=sax/n; 
-    off_ay=say/n; 
-    off_az=saz/n-16384;
-    off_gx=sgx/n; 
-    off_gy=sgy/n; 
-    off_gz=sgz/n;
-    
-    uart_str("Calibration done!\r\n\r\n");
-    return 1;
-}
-
-uint8_t mpu_read(float *ax,float *ay,float *az,
-                 float *gx,float *gy,float *gz,float *temp) {
-    uint8_t raw[14];
-    if (!mpu_rd(MPU_DATA, raw, 14)) return 0;
-    
-    int16_t rax=(int16_t)((raw[0]<<8)|raw[1])-off_ax;
-    int16_t ray=(int16_t)((raw[2]<<8)|raw[3])-off_ay;
-    int16_t raz=(int16_t)((raw[4]<<8)|raw[5])-off_az;
-    int16_t rtp=(int16_t)((raw[6]<<8)|raw[7]);
-    int16_t rgx=(int16_t)((raw[8]<<8)|raw[9])-off_gx;
-    int16_t rgy=(int16_t)((raw[10]<<8)|raw[11])-off_gy;
-    int16_t rgz=(int16_t)((raw[12]<<8)|raw[13])-off_gz;
-    
-    *ax=rax*ACCEL_SC; 
-    *ay=ray*ACCEL_SC; 
-    *az=raz*ACCEL_SC;
-    *gx=rgx*GYRO_SC;  
-    *gy=rgy*GYRO_SC;  
-    *gz=rgz*GYRO_SC;
-    *temp=(rtp/340.0f)+36.53f;
-    
-    return 1;
-}
-
-// ============================================================================
-// COMPLEMENTARY FILTER
-// ============================================================================
-
-void update_imu(float ax,float ay,float az,
-                float gx,float gy,float gz,
-                float *roll,float *pitch,float *yaw) {
-    roll_f  += gx*DT; 
-    pitch_f += gy*DT; 
-    yaw_f += gz*DT;
-    
-    float ar = atan2f(ay, sqrtf(ax*ax+az*az)) * 180.0f/PI;
-    float ap = atan2f(-ax,sqrtf(ay*ay+az*az)) * 180.0f/PI;
-    
-    roll_f  = GYRO_W*roll_f  + (1.0f-GYRO_W)*ar;
-    pitch_f = GYRO_W*pitch_f + (1.0f-GYRO_W)*ap;
-    
-    *roll=roll_f; 
-    *pitch=pitch_f; 
-    *yaw=yaw_f;
-}
-
-// ============================================================================
-// MAIN
-// ============================================================================
 
 int main(void) {
-    clock_init();
-    gpio_init();
     systick_init();
+    gpio_init();
     uart_init();
-    i2c_init();
-
+    
     delay_ms(200);
-
-    uart_str("\r\n=== STM32F103 + MPU6050 IMU ===\r\n");
-    uart_str("Clock: 8 MHz (HSI internal)\r\n");
-    uart_str("Serial: 115200 baud\r\n\r\n");
-
-    if (!mpu_init()) {
-        uart_str("MPU6050 FAILED! LED blinks fast.\r\n");
-        while (1) { 
-            GPIOC_ODR ^= (1<<13); 
-            delay_ms(100); 
-        }
-    }
-
-    uart_str("R=Roll  P=Pitch  Y=Yaw  T=Temp\r\n");
-    uart_str("Tilt the board to see angles change!\r\n\r\n");
-
-    uint32_t last=0, led=0;
-
+    
+    uart_str("\r\n=== STM32F103 (NO MPU6050) ===\r\n");
+    uart_str("UART: 115200 baud\r\n");
+    uart_str("LED on PC13 blinks every 1 second\r\n\r\n");
+    
+    uint32_t last = 0;
+    uint32_t counter = 0;
+    
     while (1) {
-        if ((ms - last) >= 10) {
-            last = ms;
-            float ax,ay,az,gx,gy,gz,temp,roll,pitch,yaw;
+        if ((ms_count - last) >= 1000) {
+            last = ms_count;
+            counter++;
             
-            if (mpu_read(&ax,&ay,&az,&gx,&gy,&gz,&temp)) {
-                update_imu(ax,ay,az,gx,gy,gz,&roll,&pitch,&yaw);
-                
-                uart_str("R:"); 
-                uart_float(roll);
-                uart_str(" P:"); 
-                uart_float(pitch);
-                uart_str(" Y:"); 
-                uart_float(yaw);
-                uart_str(" T:"); 
-                uart_float(temp);
-                uart_str("C\r\n");
-                
-                if (++led >= 100) { 
-                    led=0; 
-                    GPIOC_ODR ^= (1<<13); 
-                }
-            }
+            uart_str("Tick ");
+            uart_int(counter);
+            uart_str(" - LED toggle\r\n");
+            
+            GPIOC_ODR ^= (1 << 13);  // blink
         }
     }
 }
