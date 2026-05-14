@@ -38,7 +38,7 @@ import math
 from collections import deque
 
 # ── CHANGE THIS TO YOUR PORT ───────────────────────────────────────────────
-COM_PORT  = "/dev/ttyUSB1"   # Linux: /dev/ttyUSB0 or /dev/ttyACM0
+COM_PORT  = "/dev/ttyUSB0"   # Linux: /dev/ttyUSB0 or /dev/ttyACM0
 BAUD_RATE = 115200
 # ──────────────────────────────────────────────────────────────────────────
 

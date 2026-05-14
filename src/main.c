@@ -912,101 +912,318 @@
 //     }
 // }
 
-/**
- * @file stm32_no_mpu.c
- * 
- * STM32F103 - UART + LED only (NO MPU6050)
- * Use this to confirm UART/GPIO work before adding I2C
- */
 
-#include <stdint.h>
+// #include <stdint.h>
+// #include <stdio.h>
 
-#define RCC_APB2ENR (*(volatile uint32_t*)0x40021018UL)
-#define GPIOA_CRH   (*(volatile uint32_t*)0x40010804UL)
-#define GPIOC_CRH   (*(volatile uint32_t*)0x40011004UL)
-#define GPIOC_ODR   (*(volatile uint32_t*)0x4001100CUL)
+// // ============ STM32F103 Register Definitions ============
 
-#define USART1_SR   (*(volatile uint32_t*)0x40013800UL)
-#define USART1_DR   (*(volatile uint32_t*)0x40013804UL)
-#define USART1_BRR  (*(volatile uint32_t*)0x40013808UL)
-#define USART1_CR1  (*(volatile uint32_t*)0x4001380CUL)
+// // RCC (Reset and Clock Control)
+// #define RCC_BASE 0x40021000
+// #define RCC_CR (*(volatile uint32_t *)(RCC_BASE + 0x00))
+// #define RCC_CFGR (*(volatile uint32_t *)(RCC_BASE + 0x04))
+// #define RCC_APB1RSTR (*(volatile uint32_t *)(RCC_BASE + 0x10))
+// #define RCC_APB2RSTR (*(volatile uint32_t *)(RCC_BASE + 0x0C))
+// #define RCC_AHBENR (*(volatile uint32_t *)(RCC_BASE + 0x14))
+// #define RCC_APB1ENR (*(volatile uint32_t *)(RCC_BASE + 0x1C))
+// #define RCC_APB2ENR (*(volatile uint32_t *)(RCC_BASE + 0x18))
 
-#define STK_CTRL    (*(volatile uint32_t*)0xE000E010UL)
-#define STK_LOAD    (*(volatile uint32_t*)0xE000E014UL)
-#define STK_VAL     (*(volatile uint32_t*)0xE000E018UL)
+// // GPIO Bases
+// #define GPIOA_BASE 0x40010800
+// #define GPIOB_BASE 0x40010C00
+// #define GPIOC_BASE 0x40011000
 
-volatile uint32_t ms_count = 0;
+// // GPIO Macros (FIXED - added 'base' parameter)
+// #define GPIO_CRL(base) (*(volatile uint32_t *)((base) + 0x00))
+// #define GPIO_CRH(base) (*(volatile uint32_t *)((base) + 0x04))
+// #define GPIO_IDR(base) (*(volatile uint32_t *)((base) + 0x08))
+// #define GPIO_ODR(base) (*(volatile uint32_t *)((base) + 0x0C))
+// #define GPIO_BSRR(base) (*(volatile uint32_t *)((base) + 0x10))
+// #define GPIO_BRR(base) (*(volatile uint32_t *)((base) + 0x14))
 
-void SysTick_Handler(void) {
-    ms_count++;
-}
+// // I2C1
+// #define I2C1_BASE 0x40005400
+// #define I2C1_CR1 (*(volatile uint32_t *)(I2C1_BASE + 0x00))
+// #define I2C1_CR2 (*(volatile uint32_t *)(I2C1_BASE + 0x04))
+// #define I2C1_OAR1 (*(volatile uint32_t *)(I2C1_BASE + 0x08))
+// #define I2C1_OAR2 (*(volatile uint32_t *)(I2C1_BASE + 0x0C))
+// #define I2C1_DR (*(volatile uint32_t *)(I2C1_BASE + 0x10))
+// #define I2C1_SR1 (*(volatile uint32_t *)(I2C1_BASE + 0x14))
+// #define I2C1_SR2 (*(volatile uint32_t *)(I2C1_BASE + 0x18))
+// #define I2C1_CCR (*(volatile uint32_t *)(I2C1_BASE + 0x1C))
+// #define I2C1_TRISE (*(volatile uint32_t *)(I2C1_BASE + 0x20))
 
-void systick_init(void) {
-    STK_LOAD = 8000 - 1;
-    STK_VAL = 0;
-    STK_CTRL = 0x07;
-}
+// // USART1
+// #define USART1_BASE 0x40013800
+// #define USART1_SR (*(volatile uint32_t *)(USART1_BASE + 0x00))
+// #define USART1_DR (*(volatile uint32_t *)(USART1_BASE + 0x04))
+// #define USART1_BRR (*(volatile uint32_t *)(USART1_BASE + 0x08))
+// #define USART1_CR1 (*(volatile uint32_t *)(USART1_BASE + 0x0C))
+// #define USART1_CR2 (*(volatile uint32_t *)(USART1_BASE + 0x10))
+// #define USART1_CR3 (*(volatile uint32_t *)(USART1_BASE + 0x14))
 
-void delay_ms(uint32_t ms) {
-    uint32_t start = ms_count;
-    while ((ms_count - start) < ms);
-}
+// // SysTick
+// #define SYSTICK_CTRL (*(volatile uint32_t *)0xE000E010)
+// #define SYSTICK_LOAD (*(volatile uint32_t *)0xE000E014)
+// #define SYSTICK_VAL (*(volatile uint32_t *)0xE000E018)
 
-void uart_init(void) {
-    RCC_APB2ENR |= (1 << 2) | (1 << 14);  // GPIOA, USART1
-    GPIOA_CRH = (GPIOA_CRH & 0xFFFFFF0F) | 0x000000B0;  // PA9 TX
-    USART1_BRR = 69;  // 115200 baud at 8MHz
-    USART1_CR1 = 0x200C;  // UE, TE, RE
-}
+// volatile uint32_t systick_ms = 0;
 
-void uart_tx(char c) {
-    while (!(USART1_SR & (1 << 7)));
-    USART1_DR = c;
-}
-
-void uart_str(const char *s) {
-    while (*s) uart_tx(*s++);
-}
-
-void uart_int(int32_t n) {
-    char buf[12];
-    int i = 0;
-    if (n < 0) { uart_tx('-'); n = -n; }
-    if (n == 0) { uart_tx('0'); return; }
-    while (n > 0) { buf[i++] = '0' + (n % 10); n /= 10; }
-    while (i--) uart_tx(buf[i]);
-}
-
-void gpio_init(void) {
-    RCC_APB2ENR |= (1 << 4);  // GPIOC
-    GPIOC_CRH = (GPIOC_CRH & 0xFF0FFFFF) | 0x00200000;  // PC13
-    GPIOC_ODR |= (1 << 13);  // LED off
-}
-
-int main(void) {
-    systick_init();
-    gpio_init();
-    uart_init();
+// // ============ Clock Configuration ============
+// void clock_init(void) {
+//     // Enable HSE oscillator
+//     RCC_CR |= (1 << 16);  // HSEON
+//     while (!(RCC_CR & (1 << 17)));  // Wait for HSERDY
     
-    delay_ms(200);
+//     // Configure PLL: HSE * 9 = 72MHz
+//     RCC_CFGR |= (0b111 << 18);  // PLLMUL = 9
+//     RCC_CFGR |= (1 << 16);      // PLLSRC = HSE
+//     RCC_CR |= (1 << 24);        // PLLON
+//     while (!(RCC_CR & (1 << 25)));  // Wait for PLLRDY
     
-    uart_str("\r\n=== STM32F103 (NO MPU6050) ===\r\n");
-    uart_str("UART: 115200 baud\r\n");
-    uart_str("LED on PC13 blinks every 1 second\r\n\r\n");
+//     // Switch to PLL
+//     RCC_CFGR |= (0b10 << 0);  // SW = PLL
+//     while ((RCC_CFGR & (0b11 << 2)) != (0b10 << 2));  // Wait for SWS
+// }
+
+// // ============ SysTick Timer ============
+// void systick_init(void) {
+//     // Set reload value: 72MHz / 1000 = 72000 for 1ms interrupt
+//     SYSTICK_LOAD = 72000 - 1;
+//     SYSTICK_VAL = 0;
+//     SYSTICK_CTRL = 0x07;  // Enable, use CPU clock, enable interrupt
+// }
+
+// void delay_ms(uint32_t ms) {
+//     uint32_t start = systick_ms;
+//     while ((systick_ms - start) < ms);
+// }
+
+// void SysTick_Handler(void) {
+//     systick_ms++;
+// }
+
+// // ============ USART1 Configuration ============
+// void usart1_init(void) {
+//     // Enable USART1 and GPIOA clocks
+//     RCC_APB2ENR |= (1 << 14);  // USART1EN
+//     RCC_APB2ENR |= (1 << 2);   // IOPAEN
     
-    uint32_t last = 0;
-    uint32_t counter = 0;
+//     // PA9 = TX (Alternate Push-Pull), PA10 = RX (Input Floating)
+//     GPIO_CRH(GPIOA_BASE) &= ~(0xFF << 4);  // Clear PA9, PA10
+//     GPIO_CRH(GPIOA_BASE) |= (0x0B << 4);   // PA9: AF-PP, 50MHz
+//     GPIO_CRH(GPIOA_BASE) |= (0x04 << 8);   // PA10: Input Floating
     
-    while (1) {
-        if ((ms_count - last) >= 1000) {
-            last = ms_count;
-            counter++;
-            
-            uart_str("Tick ");
-            uart_int(counter);
-            uart_str(" - LED toggle\r\n");
-            
-            GPIOC_ODR ^= (1 << 13);  // blink
-        }
-    }
-}
+//     // Configure USART1: 115200 baud
+//     // BRR = 72MHz / (16 * 115200) = 39.0625
+//     USART1_BRR = 39;  // Integer part
+    
+//     // Enable USART: TE=1, RE=1, UE=1
+//     USART1_CR1 = (1 << 13) | (1 << 3) | (1 << 2);
+// }
+
+// void usart1_putchar(char c) {
+//     while (!(USART1_SR & (1 << 7)));  // Wait for TXE
+//     USART1_DR = c;
+// }
+
+// void usart1_puts(const char *str) {
+//     while (*str) {
+//         usart1_putchar(*str++);
+//     }
+// }
+
+// int fputc(int ch, FILE *f) {
+//     usart1_putchar(ch);
+//     return ch;
+// }
+
+// // ============ I2C1 Configuration ============
+// void i2c1_init(void) {
+//     // Enable I2C1 and GPIOB clocks
+//     RCC_APB1ENR |= (1 << 21);  // I2C1EN
+//     RCC_APB2ENR |= (1 << 3);   // IOPBEN
+    
+//     // PB6 = SCL, PB7 = SDA (Open Drain Alternate)
+//     GPIO_CRL(GPIOB_BASE) &= ~(0xFF << 24);  // Clear PB6, PB7
+//     GPIO_CRL(GPIOB_BASE) |= (0xDD << 24);   // Mode = 1101 (50MHz AF-OD)
+    
+//     // Reset I2C
+//     RCC_APB1RSTR |= (1 << 21);
+//     RCC_APB1RSTR &= ~(1 << 21);
+    
+//     // Configure I2C: 400kHz
+//     I2C1_CR2 = 36;   // FREQ = 36MHz (APB1 / 2)
+//     I2C1_CCR = 90;   // For 400kHz: CCR = 72MHz / (2 * 400kHz) = 90
+//     I2C1_TRISE = 37; // TRISE = (1000ns / 1000000ns) * 36MHz + 1 = 37
+    
+//     // Enable I2C
+//     I2C1_CR1 = (1 << 0);  // PE = 1
+// }
+
+// void i2c_start(void) {
+//     I2C1_CR1 |= (1 << 8);  // START
+//     while (!(I2C1_SR1 & (1 << 0)));  // Wait for SB
+// }
+
+// void i2c_stop(void) {
+//     I2C1_CR1 |= (1 << 9);  // STOP
+// }
+
+// void i2c_send_address(uint8_t addr, uint8_t write) {
+//     I2C1_DR = (addr << 1) | (write ? 0 : 1);
+//     while (!(I2C1_SR1 & (1 << 1)));  // Wait for ADDR
+//     volatile uint32_t tmp = I2C1_SR2;  // Clear ADDR
+//     (void)tmp;  // Avoid unused variable warning
+// }
+
+// uint8_t i2c_read_byte(int ack) {
+//     if (ack) {
+//         I2C1_CR1 |= (1 << 10);  // ACK = 1
+//     } else {
+//         I2C1_CR1 &= ~(1 << 10);  // ACK = 0
+//     }
+    
+//     while (!(I2C1_SR1 & (1 << 6)));  // Wait for RXNE
+//     return I2C1_DR;
+// }
+
+// void i2c_write_byte(uint8_t data) {
+//     I2C1_DR = data;
+//     while (!(I2C1_SR1 & (1 << 2)));  // Wait for BTF
+// }
+
+// uint8_t i2c_read_reg(uint8_t addr, uint8_t reg) {
+//     i2c_start();
+//     i2c_send_address(addr, 1);  // Write
+//     i2c_write_byte(reg);
+    
+//     i2c_start();
+//     i2c_send_address(addr, 0);  // Read
+//     uint8_t data = i2c_read_byte(0);  // NACK
+//     i2c_stop();
+    
+//     return data;
+// }
+
+// void i2c_write_reg(uint8_t addr, uint8_t reg, uint8_t data) {
+//     i2c_start();
+//     i2c_send_address(addr, 1);  // Write
+//     i2c_write_byte(reg);
+//     i2c_write_byte(data);
+//     i2c_stop();
+// }
+
+// void i2c_read_multiple(uint8_t addr, uint8_t reg, uint8_t *data, uint8_t len) {
+//     i2c_start();
+//     i2c_send_address(addr, 1);  // Write
+//     i2c_write_byte(reg);
+    
+//     i2c_start();
+//     i2c_send_address(addr, 0);  // Read
+    
+//     for (int i = 0; i < len; i++) {
+//         data[i] = i2c_read_byte(i < len - 1);
+//     }
+//     i2c_stop();
+// }
+
+// // ============ MPU6050 Functions ============
+// #define MPU6050_ADDR 0x68
+// #define MPU6050_WHO_AM_I 0x75
+// #define MPU6050_PWR_MGMT_1 0x6B
+// #define MPU6050_ACCEL_XOUT_H 0x3B
+
+// void mpu6050_init(void) {
+//     // Check WHO_AM_I
+//     uint8_t who_am_i = i2c_read_reg(MPU6050_ADDR, MPU6050_WHO_AM_I);
+//     printf("WHO_AM_I: 0x%02X\r\n", who_am_i);
+    
+//     if (who_am_i != 0x68) {
+//         printf("MPU6050 not found!\r\n");
+//         while (1);
+//     }
+    
+//     // Wake up device (clear sleep bit)
+//     i2c_write_reg(MPU6050_ADDR, MPU6050_PWR_MGMT_1, 0x00);
+//     delay_ms(100);
+    
+//     printf("MPU6050 initialized!\r\n");
+// }
+
+// void mpu6050_read(int16_t *aX, int16_t *aY, int16_t *aZ) {
+//     uint8_t buffer[6];
+//     i2c_read_multiple(MPU6050_ADDR, MPU6050_ACCEL_XOUT_H, buffer, 6);
+    
+//     *aX = (int16_t)((buffer[0] << 8) | buffer[1]);
+//     *aY = (int16_t)((buffer[2] << 8) | buffer[3]);
+//     *aZ = (int16_t)((buffer[4] << 8) | buffer[5]);
+// }
+
+// // ============ Main Program ============
+// int main(void) {
+//     clock_init();
+//     systick_init();
+//     usart1_init();
+//     i2c1_init();
+    
+//     usart1_puts("\r\n\r\n");
+//     printf("=== STM32F103 MPU6050 (Bare Metal) ===\r\n");
+    
+//     mpu6050_init();
+    
+//     int16_t aX, aY, aZ;
+    
+//     while (1) {
+//         mpu6050_read(&aX, &aY, &aZ);
+//         printf("AccelX: %6d  AccelY: %6d  AccelZ: %6d\r\n", aX, aY, aZ);
+//         delay_ms(500);
+//     }
+    
+//     return 0;
+// }
+
+// // ============ Startup Code ============
+// extern uint32_t _estack;
+
+// void reset_handler(void);
+// void nmi_handler(void) { while (1); }
+// void hardfault_handler(void) { while (1); }
+// void memmanage_handler(void) { while (1); }
+// void busfault_handler(void) { while (1); }
+// void usagefault_handler(void) { while (1); }
+// void svc_handler(void) { while (1); }
+// void pendsv_handler(void) { while (1); }
+
+// // Vector table
+// __attribute__((section(".vectors")))
+// uint32_t *vectors[] = {
+//     &_estack,
+//     (uint32_t *)reset_handler,
+//     (uint32_t *)nmi_handler,
+//     (uint32_t *)hardfault_handler,
+//     (uint32_t *)memmanage_handler,
+//     (uint32_t *)busfault_handler,
+//     (uint32_t *)usagefault_handler,
+//     0, 0, 0, 0,
+//     (uint32_t *)svc_handler,
+//     (uint32_t *)pendsv_handler,
+//     (uint32_t *)SysTick_Handler,
+// };
+
+// void reset_handler(void) {
+//     // Initialize BSS
+//     extern uint32_t _sbss, _ebss;
+//     for (uint32_t *dst = &_sbss; dst < &_ebss; dst++) {
+//         *dst = 0;
+//     }
+    
+//     // Copy data section
+//     extern uint32_t _sdata, _edata, _sidata;
+//     for (uint32_t *dst = &_sdata, *src = &_sidata; dst < &_edata; ) {
+//         *dst++ = *src++;
+//     }
+    
+//     main();
+//     while (1);
+// }
