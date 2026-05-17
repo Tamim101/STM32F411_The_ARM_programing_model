@@ -42,3 +42,13 @@
 //         EXTI->PR = (1U << 13);     // clear pending bit
 //     }
 // }
+
+int main = 12;
+int abr  = 13;
+int  i ;
+int main(){
+    for(i = 0; i < abr; i ++){
+        if (i  == abr)
+
+    }
+}
