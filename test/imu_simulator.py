@@ -38,15 +38,7 @@ import math
 from collections import deque
 
 
-import pygame
-import serial
-import serial.tools.list_ports
-import numpy as np
-import sys
-import time
-import threading
-import math
-from collections import deque
+
 # ── CHANGE THIS TO YOUR PORT ───────────────────────────────────────────────
 COM_PORT  = "/dev/ttyUSB1"   # Linux: /dev/ttyUSB0 or /dev/ttyACM0
 BAUD_RATE = 115200
