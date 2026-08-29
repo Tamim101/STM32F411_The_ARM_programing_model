@@ -346,6 +346,9 @@ static float rs_to_ppm(float rs) {
     if(ppm > 9999.0f) ppm = 9999.0f;
     return ppm;
 }
+static float ppm_to_ads(float ppm){
+    
+}
 static float g_last_rs = 0.0f;
 static float read_co(void) {
     g_last_rs = adc_to_rs(adc_avg());
