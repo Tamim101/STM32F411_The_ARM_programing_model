@@ -279,7 +279,7 @@
 
 // /* Calibrate R0 = resistance in clean air. Run with the board in FRESH air. */
 // static void MQ7_Calibrate(void) {
-//     float acc = 0.0f;
+    float acc = 0.0f;
 //     for (int i = 0; i < 50; i++) { acc += MQ7_Rs(); Delay_ms(50); }
 //     R0 = acc / 50.0f;
 // }
