@@ -36,6 +36,7 @@ ROLL_SCALE = 0.70
 PITCH_SCALE = 0.70
 YAW_SCALE = 0.80
 
+
 # Throttle curve (Betaflight "Throttle MID" and "Throttle EXPO")
 THR_MID = 0.50     # stick point where the curve is flattest (near hover)
 THR_EXPO = 0.30    # 0 = linear, higher = finer control around THR_MID
@@ -61,6 +62,7 @@ def read_axis(js, axis, invert, deadband=0.0):
     return max(-1.0, min(1.0, v))
 
 
+
 def expo(x, e):
     """Betaflight RC expo: soft center, full range at the ends."""
     return x * (1 - e) + (x ** 3) * e
@@ -80,6 +82,8 @@ class Smoother:
     def __init__(self, tau, dt):
         self.alpha = 1.0 if tau <= 0 else dt / (tau + dt)
         self.value = None
+        # sef .value =  none 
+        # self.value =  None 
 
     def __call__(self, x):
         if self.value is None:
