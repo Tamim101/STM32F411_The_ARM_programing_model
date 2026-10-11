@@ -555,3 +555,5 @@
 // }
 // // source flixenv/bin/activate
 // //python3 flix_radio.py
+
+// note drone cost 1526+272
